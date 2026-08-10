@@ -1,0 +1,36 @@
+{
+  "vendored_at": "2026-08-10T20:57:41+00:00",
+  "note": "Pinned and committed on purpose. Nothing here is fetched at runtime; the published site makes no third-party requests. Transitive /npm/ imports inside jsDelivr +esm bundles are downloaded and rewritten to local relative paths.",
+  "assets": {
+    "hyparquet.mjs": {
+      "url": "https://cdn.jsdelivr.net/npm/hyparquet@1.28.1/+esm",
+      "bytes": 59834,
+      "sha256": "35b30c61d6fb9643924e67340d53abaf2d3f82ba24a23231f5466f283366ab77",
+      "purpose": "Parquet reader \u2014 the whole query engine, including HTTP range reads"
+    },
+    "npm_fzstd@0.1.1.mjs": {
+      "url": "https://cdn.jsdelivr.net/npm/fzstd@0.1.1/+esm",
+      "bytes": 8573,
+      "sha256": "21add2d34e89a9b47179cea75c77c0c6ce9e9de53bc48b2e56dc5f7cfd49c1ab",
+      "purpose": "transitive dependency"
+    },
+    "npm_hysnappy@1.0.0.mjs": {
+      "url": "https://cdn.jsdelivr.net/npm/hysnappy@1.0.0/+esm",
+      "bytes": 5749,
+      "sha256": "170789900f87fb98922d4de82d30d0f34f5440ea1e72d4a65e548879cb47cca0",
+      "purpose": "transitive dependency"
+    },
+    "hyparquet-compressors.mjs": {
+      "url": "https://cdn.jsdelivr.net/npm/hyparquet-compressors@1.1.1/+esm",
+      "bytes": 103398,
+      "sha256": "7b84f683affed0a32ef88ecfbf8c6c995809036b12083ce96ca223cf2ed9d945",
+      "purpose": "ZSTD/Brotli page decompressors; the tiers are written with ZSTD"
+    },
+    "echarts.min.js": {
+      "url": "https://cdn.jsdelivr.net/npm/echarts@6.1.0/dist/echarts.min.js",
+      "bytes": 1121883,
+      "sha256": "b66b25aeb4df84e33199dc21694014d336d222cbd9deb0e5a7c14bd6aa0d0fd0",
+      "purpose": "Charting \u2014 canvas rendering, which is what keeps 85 k map points smooth"
+    }
+  }
+}

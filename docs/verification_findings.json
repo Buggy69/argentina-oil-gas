@@ -1,0 +1,180 @@
+{
+  "row_counts": {
+    "wells": 85417,
+    "well_events": 499031,
+    "well_operator_history": 176956,
+    "monthly_production": 17775911
+  },
+  "orphans": {
+    "monthly_production": "0",
+    "well_events": "0",
+    "well_operator_history": "0"
+  },
+  "duplicate_keys": {
+    "production": 0,
+    "operators": 0,
+    "wells": 0
+  },
+  "reconciliation": {
+    "oil:AUSTRAL": {
+      "months": 240,
+      "petrodb": 25224937.067900717,
+      "official": 25224937.163900003,
+      "total_diff_pct": -3.8057294238224924e-07,
+      "worst_month_pct": 3.2456587873036264e-06
+    },
+    "oil:GOLFO SAN JORGE": {
+      "months": 240,
+      "petrodb": 278316548.3821254,
+      "official": 278888898.9684,
+      "total_diff_pct": -0.20522530240240042,
+      "worst_month_pct": 35.17940754142484
+    },
+    "oil:NEUQUINA": {
+      "months": 240,
+      "petrodb": 330259107.6116906,
+      "official": 330823823.63439995,
+      "total_diff_pct": -0.17069992617383223,
+      "worst_month_pct": 11.357538588769069
+    },
+    "oil:NOROESTE": {
+      "months": 240,
+      "petrodb": 9515935.554646172,
+      "official": 9554567.3477,
+      "total_diff_pct": -0.4043280208091026,
+      "worst_month_pct": 28.056885479070676
+    },
+    "oil:CUYANA": {
+      "months": 240,
+      "petrodb": 30907079.041321628,
+      "official": 30910921.392300002,
+      "total_diff_pct": -0.012430399371180251,
+      "worst_month_pct": 3.006466167535431
+    },
+    "gas:AUSTRAL": {
+      "months": 240,
+      "petrodb": 206366528.55942023,
+      "official": 206366528.599,
+      "total_diff_pct": -1.917935974326169e-08,
+      "worst_month_pct": 1.8582558936886038e-07
+    },
+    "gas:GOLFO SAN JORGE": {
+      "months": 240,
+      "petrodb": 95648262.84062064,
+      "official": 95883022.83100002,
+      "total_diff_pct": -0.24483999716316596,
+      "worst_month_pct": 53.99544589888858
+    },
+    "gas:NEUQUINA": {
+      "months": 240,
+      "petrodb": 569338296.00481,
+      "official": 569582508.3431,
+      "total_diff_pct": -0.042875673798407746,
+      "worst_month_pct": 3.4906337368928826
+    },
+    "gas:NOROESTE": {
+      "months": 240,
+      "petrodb": 66973874.959969334,
+      "official": 67242824.2699,
+      "total_diff_pct": -0.39996730186576945,
+      "worst_month_pct": 35.35888670897303
+    },
+    "gas:CUYANA": {
+      "months": 240,
+      "petrodb": 1070295.088708482,
+      "official": 1070467.6086,
+      "total_diff_pct": -0.016116311239306316,
+      "worst_month_pct": 3.3628206408920107
+    }
+  },
+  "bbl_per_m3_implied": 6.289811089488897,
+  "unconventional_split": [
+    [
+      "oil",
+      "SHALE",
+      240,
+      "114,772,374",
+      "115,125,553",
+      "-0.31%"
+    ],
+    [
+      "oil",
+      "TIGHT",
+      240,
+      "4,654,655",
+      "4,679,419",
+      "-0.53%"
+    ],
+    [
+      "gas",
+      "SHALE",
+      240,
+      "140,259,572",
+      "140,324,251",
+      "-0.05%"
+    ],
+    [
+      "gas",
+      "TIGHT",
+      240,
+      "103,247,341",
+      "103,714,789",
+      "-0.45%"
+    ]
+  ],
+  "tef": {
+    "max_hours": 3058.0,
+    "rows_over_month_ceiling": 5
+  },
+  "negatives": {
+    "prod_pet": 43,
+    "prod_gas": 11,
+    "prod_agua": 81,
+    "tef": 12
+  },
+  "nulls": {
+    "prod_pet": {
+      "null": 146248,
+      "zero": 11934677
+    },
+    "prod_gas": {
+      "null": 146248,
+      "zero": 13249673
+    },
+    "prod_agua": {
+      "null": 146248,
+      "zero": 11932334
+    },
+    "tef": {
+      "null": 146248,
+      "zero": 10725843
+    }
+  },
+  "srid": 4326,
+  "geojson_agreement": {
+    "matched": 85380,
+    "no_coordinate": 1170,
+    "comparable": 84210,
+    "identical": 84208,
+    "over_1km": 2,
+    "p99_deg": 0.0,
+    "max_deg": 0.2867819999999952
+  },
+  "coords": {
+    "missing": 1176,
+    "out_of_bounds": 2,
+    "max_dlon": 1170,
+    "max_dlat": 84208
+  },
+  "trajectory_bands": {
+    "vertical_or_zero": 1874,
+    "0_150": 155,
+    "150_600": 20,
+    "over_600": 2555,
+    "threshold_m": 500.0
+  },
+  "padron_coverage": {
+    "wells": 85417,
+    "matched": 85406
+  }
+}

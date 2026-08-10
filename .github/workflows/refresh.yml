@@ -1,0 +1,118 @@
+# Weekly rebuild and republish.
+#
+# WHY THIS RUNS IN THE CLOUD AND NOT ON A LAPTOP
+# ----------------------------------------------
+# The upstream Parquet lives on huggingface.co, which some corporate networks
+# block outright (the author's does, under an "artificial-intelligence" filter
+# category that serves a click-through interstitial no script can pass). GitHub's
+# runners are on GitHub's network, so they reach both publishers normally. The
+# refresh therefore stops depending on any one machine's network policy — and
+# nothing on that machine is bypassed to achieve it.
+#
+# THE QUALITY GATE IS THE POINT
+# -----------------------------
+# An unattended job that publishes whatever it finds is a liability. This one
+# rebuilds, runs the full verification suite, and republishes ONLY if that
+# passes. On failure it opens an issue and the previously published site stays
+# up, which is the right failure mode: stale but correct beats fresh but wrong.
+
+name: Weekly data refresh
+
+on:
+  schedule:
+    # 06:00 UTC every Friday. Cron on GitHub is UTC and has no timezone field.
+    - cron: '0 6 * * 5'
+  workflow_dispatch:        # manual trigger, for the first supervised run
+
+permissions:
+  contents: write           # to commit rebuilt tiers
+  issues: write             # to report a failed verification
+  pages: write
+  id-token: write
+
+concurrency:
+  group: refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install duckdb pyarrow
+
+      - name: Point the pipeline at the cloud-reachable source
+        # The committed config uses the local_parquet driver, which reads files
+        # a human downloaded by hand. In CI there is no such folder, so switch
+        # to the driver that reads HuggingFace directly. This is the source
+        # abstraction earning its keep: one line, no code change.
+        run: |
+          python - <<'PY'
+          import re, pathlib
+          p = pathlib.Path('config.toml')
+          p.write_text(re.sub(r'^driver = .*$', 'driver = "hf_parquet"',
+                              p.read_text(encoding='utf-8'), count=1, flags=re.M),
+                       encoding='utf-8')
+          PY
+
+      - name: Download official portal data
+        run: python tools/00_download_portal.py
+
+      - name: Verify
+        id: verify
+        run: python tools/02_verify.py
+
+      - name: Enrich
+        run: python tools/03_enrich.py
+
+      - name: Rebuild web tiers
+        run: python tools/04_build_web_data.py
+
+      - name: Commit rebuilt tiers
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -- config.toml
+          git add site/data site/PROVENANCE.json docs/
+          if git diff --staged --quiet; then
+            echo "no change in the published data"
+          else
+            git commit -m "chore: weekly data refresh ($(date -u +%Y-%m-%d))"
+            git push
+          fi
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - uses: actions/deploy-pages@v4
+
+      - name: Report a failed refresh
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `Weekly data refresh failed (${new Date().toISOString().slice(0,10)})`,
+              body: [
+                'The scheduled refresh did not complete, so **the previously',
+                'published site is still live and unchanged** — which is the',
+                'intended failure mode.',
+                '',
+                `Run: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+                '',
+                'Most likely causes, in the order worth checking:',
+                '1. An upstream schema change — `02_verify.py` fails loudly on',
+                '   a renamed or retyped column rather than emptying a chart.',
+                '2. A reconciliation drift against the official series.',
+                '3. huggingface.co or datos.energia.gob.ar being unreachable.',
+              ].join('\n')
+            })

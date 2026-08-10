@@ -1,0 +1,26 @@
+# Raw and derived data never enters the repository. The published tiers under
+# site/data/ are the exception — those are the deliverable — and they are
+# force-added by the build, so the blanket ignore here is safe.
+data/raw/
+data/build/
+*.duckdb
+*.duckdb.wal
+
+# Vendored browser libraries are fetched by tools/05_vendor_assets.py with
+# pinned versions and recorded hashes. They ARE committed (the site must have
+# zero external hosts at runtime), so nothing is ignored here — this note is
+# to stop a future reader from "tidying" them into .gitignore.
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.ipynb_checkpoints/
+
+# Notebooks are generated from the jupytext .py source of record.
+notebooks/*.ipynb
+
+# OS / editor
+Thumbs.db
+.DS_Store
+.vscode/

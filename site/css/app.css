@@ -1,0 +1,223 @@
+/* ===========================================================================
+   Design tokens.
+
+   Values come from the reference data-visualisation palette unchanged. The
+   categorical slots are ordered, not a pool: slot 1 is always the first series,
+   slot 2 always the second, and a series keeps its slot when other series are
+   filtered away. That ordering is what makes the palette colourblind-safe, so
+   it must not be shuffled for aesthetics.
+
+   Dark values are declared twice on purpose — once under the OS preference and
+   once under an explicit [data-theme] stamp — so the in-page toggle beats the
+   OS setting in *both* directions.
+   =========================================================================== */
+:root {
+  color-scheme: light;
+
+  --surface-1:  #fcfcfb;   /* chart / card surface */
+  --plane:      #f9f9f7;   /* page behind the cards */
+  --ink-1:      #0b0b0b;
+  --ink-2:      #52514e;
+  --ink-muted:  #898781;
+  --grid:       #e1e0d9;
+  --axis:       #c3c2b7;
+  --hairline:   rgba(11,11,11,0.10);
+  --good:       #006300;
+
+  --s1: #2a78d6;  --s2: #eb6834;  --s3: #1baf7a;  --s4: #eda100;
+  --s5: #e87ba4;  --s6: #008300;  --s7: #4a3aa7;  --s8: #e34948;
+
+  --seq-100:#cde2fb; --seq-250:#86b6ef; --seq-400:#3987e5;
+  --seq-550:#1c5cab; --seq-700:#0d366b;
+
+  --radius: 10px;
+  --gap: 16px;
+  --font: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:where(:not([data-theme="light"])) {
+    color-scheme: dark;
+    --surface-1: #1a1a19;  --plane: #0d0d0d;
+    --ink-1: #ffffff;      --ink-2: #c3c2b7;   --ink-muted: #898781;
+    --grid: #2c2c2a;       --axis: #383835;
+    --hairline: rgba(255,255,255,0.10);
+    --good: #0ca30c;
+    --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500;
+    --s5:#d55181; --s6:#008300; --s7:#9085e9; --s8:#e66767;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --surface-1: #1a1a19;  --plane: #0d0d0d;
+  --ink-1: #ffffff;      --ink-2: #c3c2b7;   --ink-muted: #898781;
+  --grid: #2c2c2a;       --axis: #383835;
+  --hairline: rgba(255,255,255,0.10);
+  --good: #0ca30c;
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500;
+  --s5:#d55181; --s6:#008300; --s7:#9085e9; --s8:#e66767;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: var(--font);
+  background: var(--plane);
+  color: var(--ink-1);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-text-size-adjust: 100%;
+}
+a { color: var(--s1); }
+
+/* --- top bar ------------------------------------------------------------ */
+.topbar {
+  position: sticky; top: 0; z-index: 20;
+  background: var(--surface-1);
+  border-bottom: 1px solid var(--hairline);
+}
+.topbar-in {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: var(--gap); padding: 10px 16px; max-width: 1400px; margin: 0 auto;
+}
+.brand h1 { font-size: 17px; margin: 0; font-weight: 600; letter-spacing: -0.01em; }
+.brand .sub { font-size: 12px; margin: 2px 0 0; color: var(--ink-2); }
+.icon-btn {
+  background: transparent; border: 1px solid var(--hairline);
+  color: var(--ink-2); border-radius: 8px; cursor: pointer;
+  min-width: 40px; min-height: 40px; font-size: 17px;
+}
+.icon-btn:hover { color: var(--ink-1); }
+
+.tabs {
+  display: flex; gap: 2px; overflow-x: auto; padding: 0 10px;
+  max-width: 1400px; margin: 0 auto; scrollbar-width: none;
+}
+.tabs::-webkit-scrollbar { display: none; }
+.tabs button {
+  background: none; border: 0; border-bottom: 2px solid transparent;
+  color: var(--ink-2); font: inherit; font-size: 14px;
+  padding: 9px 12px; cursor: pointer; white-space: nowrap; min-height: 44px;
+}
+.tabs button[aria-selected="true"] { color: var(--ink-1); border-bottom-color: var(--s1); font-weight: 600; }
+
+/* --- filter bar --------------------------------------------------------- */
+.filterbar { background: var(--surface-1); border-bottom: 1px solid var(--hairline); }
+.filterbar-in { max-width: 1400px; margin: 0 auto; padding: 10px 16px; }
+.facets { display: flex; flex-wrap: wrap; gap: 8px; }
+.facet { position: relative; }
+.facet > summary {
+  list-style: none; cursor: pointer; user-select: none;
+  border: 1px solid var(--hairline); border-radius: 999px;
+  padding: 7px 13px; font-size: 13px; color: var(--ink-2);
+  background: var(--plane); min-height: 36px; display: inline-flex; align-items: center;
+}
+.facet > summary::-webkit-details-marker { display: none; }
+.facet[open] > summary, .facet.active > summary { color: var(--ink-1); border-color: var(--axis); }
+.facet.active > summary { font-weight: 600; }
+.facet-panel {
+  position: absolute; z-index: 30; margin-top: 6px; min-width: 260px;
+  max-height: 340px; overflow-y: auto; background: var(--surface-1);
+  border: 1px solid var(--hairline); border-radius: var(--radius);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.14); padding: 8px;
+}
+.facet-panel label {
+  display: flex; gap: 9px; align-items: center; padding: 7px 8px;
+  border-radius: 6px; font-size: 13px; cursor: pointer; min-height: 36px;
+}
+.facet-panel label:hover { background: var(--plane); }
+.facet-panel .count { margin-left: auto; color: var(--ink-muted); font-size: 12px;
+  font-variant-numeric: tabular-nums; }
+.facet-tools { display: flex; gap: 8px; padding: 4px 8px 8px; }
+.filter-actions {
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  margin-top: 9px; font-size: 13px; color: var(--ink-2);
+}
+.units-toggle { display: inline-flex; align-items: center; gap: 7px; cursor: pointer; }
+.selection-summary { color: var(--ink-muted); }
+.btn-quiet {
+  background: none; border: 1px solid var(--hairline); color: var(--ink-2);
+  border-radius: 7px; padding: 6px 11px; font: inherit; font-size: 13px;
+  cursor: pointer; min-height: 34px;
+}
+.btn-quiet:hover { color: var(--ink-1); }
+
+/* --- layout ------------------------------------------------------------- */
+main { max-width: 1400px; margin: 0 auto; padding: var(--gap) 16px 48px; }
+.grid { display: grid; gap: var(--gap); grid-template-columns: repeat(12, 1fr); }
+.card {
+  background: var(--surface-1); border: 1px solid var(--hairline);
+  border-radius: var(--radius); padding: 16px; grid-column: span 12;
+  min-width: 0;                      /* lets a grid child actually shrink */
+}
+.card.half { grid-column: span 6; }
+.card.third { grid-column: span 4; }
+@media (max-width: 900px) { .card.half, .card.third { grid-column: span 12; } }
+
+.card h2 { font-size: 14px; margin: 0 0 2px; font-weight: 600; }
+.card .note { font-size: 12px; color: var(--ink-2); margin: 0 0 12px; }
+.card .source { font-size: 11px; color: var(--ink-muted); margin: 10px 0 0; }
+
+/* Stat tiles — a single number is a tile, never a one-bar bar chart. */
+.tiles { display: grid; gap: var(--gap); grid-template-columns: repeat(4, 1fr); }
+@media (max-width: 900px) { .tiles { grid-template-columns: repeat(2, 1fr); } }
+.tile { background: var(--surface-1); border: 1px solid var(--hairline);
+  border-radius: var(--radius); padding: 14px 16px; }
+.tile .label { font-size: 12px; color: var(--ink-2); }
+.tile .value { font-size: 27px; font-weight: 600; letter-spacing: -0.02em; margin-top: 3px; }
+.tile .sub { font-size: 12px; color: var(--ink-muted); }
+
+.chart { width: 100%; height: 320px; }
+.chart.tall { height: 460px; }
+.chart.short { height: 240px; }
+/* Argentina is roughly 3× taller than wide once longitude is scaled by
+   cos(latitude), so the map needs vertical room or the correctly-proportioned
+   plot ends up a postage stamp in the middle of a wide card. */
+.chart.map { height: 680px; }
+@media (max-width: 700px) { .chart.map { height: 520px; } }
+
+/* Wide content scrolls inside its own box; the page never scrolls sideways. */
+.scroll-x { overflow-x: auto; }
+table.data { border-collapse: collapse; width: 100%; font-size: 13px;
+  font-variant-numeric: tabular-nums; }
+table.data th, table.data td { padding: 7px 10px; text-align: right;
+  border-bottom: 1px solid var(--grid); white-space: nowrap; }
+table.data th:first-child, table.data td:first-child { text-align: left; }
+table.data th { color: var(--ink-2); font-weight: 600; position: sticky; top: 0;
+  background: var(--surface-1); }
+
+.legend { display: flex; flex-wrap: wrap; gap: 12px; font-size: 12px;
+  color: var(--ink-2); margin-top: 10px; }
+.legend .key { display: inline-flex; align-items: center; gap: 6px; }
+.legend .swatch { width: 11px; height: 11px; border-radius: 3px; display: inline-block; }
+
+.controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+  margin-bottom: 12px; font-size: 13px; color: var(--ink-2); }
+.controls select, .controls input[type="search"] {
+  font: inherit; font-size: 13px; padding: 6px 9px; min-height: 34px;
+  border: 1px solid var(--hairline); border-radius: 7px;
+  background: var(--plane); color: var(--ink-1);
+}
+.seg { display: inline-flex; border: 1px solid var(--hairline); border-radius: 7px; overflow: hidden; }
+.seg button { background: var(--plane); border: 0; color: var(--ink-2); font: inherit;
+  font-size: 13px; padding: 7px 11px; cursor: pointer; min-height: 34px; }
+.seg button[aria-pressed="true"] { background: var(--s1); color: #fff; font-weight: 600; }
+
+.boot { padding: 60px 16px; text-align: center; color: var(--ink-2); }
+.boot-title { font-size: 15px; margin: 0 0 6px; }
+.boot-detail { font-size: 13px; color: var(--ink-muted); margin: 0; }
+
+/* Refetch holds the previous render at reduced opacity — no skeleton flash,
+   no layout jump. */
+.is-busy { opacity: 0.55; transition: opacity 120ms ease; }
+
+.sitefoot { max-width: 1400px; margin: 0 auto; padding: 22px 16px 40px;
+  font-size: 12px; color: var(--ink-2); border-top: 1px solid var(--hairline); }
+.sitefoot p { margin: 0 0 8px; }
+.muted { color: var(--ink-muted); }
+
+.prose { font-size: 14px; line-height: 1.65; max-width: 74ch; }
+.prose h3 { font-size: 14px; margin: 22px 0 6px; }
+.prose code { background: var(--plane); padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+.callout { border-left: 3px solid var(--s4); background: var(--plane);
+  padding: 11px 14px; border-radius: 0 8px 8px 0; margin: 14px 0; font-size: 13px; }

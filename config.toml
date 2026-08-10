@@ -1,0 +1,72 @@
+# ---------------------------------------------------------------------------
+# Project configuration.
+#
+# Everything the pipeline needs to know about *where* things live is here, and
+# nowhere else. No script hard-codes a path. That is the rule that makes the
+# future migration (local files -> object store -> live database) a config edit
+# instead of a rewrite.
+#
+# All relative paths are resolved against the repository root, so the same file
+# works on Max's Windows machine and on a Linux GitHub Actions runner.
+# ---------------------------------------------------------------------------
+
+[project]
+name        = "petrodb-argentina-dashboard"
+title       = "Argentina Oil & Gas — open production data"
+# Shown on the site as "data as of"; rewritten by the build from real file dates.
+snapshot    = "2026-08-10"
+
+[paths]
+# Where Max's manual browser downloads landed. This is a STAGING area: Stage 1
+# copies out of it once and never reads it again. Nothing downstream depends on
+# OneDrive being present, which is what lets the weekly cloud refresh replace it.
+staging   = 'C:\Users\mhaas\OneDrive - SLB\04_TECHNICAL_IP\04_DIGITAL_AI\Argentina_Public_Data'
+
+raw       = "data/raw"                       # canonical raw store (git-ignored)
+build     = "data/build"                     # derived artefacts (git-ignored)
+warehouse = "data/build/petrodb_ar.duckdb"   # the DuckDB file every stage reads
+site_data = "site/data"                      # what actually ships to the browser
+
+# ---------------------------------------------------------------------------
+# Source drivers. `driver` names the class the pipeline reads petrodb through;
+# each [source.<name>] block configures one driver. See tools/sources/base.py.
+# ---------------------------------------------------------------------------
+[source]
+driver = "local_parquet"
+
+[source.local_parquet]
+root = "data/raw/petrodb"
+
+[source.hf_parquet]
+# Blocked from the SLB network by the corporate web filter; this driver exists
+# for the GitHub Actions runner, which is not on that network.
+base_url = "https://huggingface.co/datasets/sumpalabs/petrodb/resolve/main/argentina/"
+
+[source.http_portal]
+# The official Argentine open-data portal (CKAN). Reachable from everywhere.
+ckan_base = "https://datos.energia.gob.ar"
+
+[source.sql_database]
+# Deliberately empty. The driver is a stub until Max wants the live-database
+# phase; the interface is fixed now so adding it later touches one file.
+dsn = ""
+
+# ---------------------------------------------------------------------------
+# Build parameters. Cardinality caps keep the browser-side aggregate small; the
+# size gates are enforced by tools/04_build_web_data.py, which refuses to ship
+# a bundle that would break GitHub Pages' limits.
+# ---------------------------------------------------------------------------
+[build]
+top_n_operators    = 25      # beyond this, operators collapse into "Other"
+top_n_formations   = 30
+top_n_fields       = 40
+tier_c_max_file_mb = 95      # GitHub Pages hard-fails above 100 MB per file
+tier_c_max_total_mb = 500
+
+[units]
+# Confirmed against the publisher's own arithmetic, not assumed. See
+# docs/verification_report.md check 5 for the derivation.
+m3_to_bbl        = 6.28981   # oil:  1 m3  = 6.28981 bbl
+mm3_to_mcf       = 35.3147   # gas:  1 e3m3 = 35.3147 Mcf
+gas_unit         = "e3m3"    # prod_gas is in thousands of cubic metres
+oil_unit         = "m3"

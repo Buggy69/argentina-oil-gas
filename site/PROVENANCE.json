@@ -1,0 +1,264 @@
+{
+  "generated": "2026-08-10T20:40:20+00:00",
+  "snapshot": "2026-08-10",
+  "petrodb": {
+    "driver": "local_parquet",
+    "root": "C:\\Users\\mhaas\\Claude_projects\\petrodb_dashboard\\data\\raw\\petrodb",
+    "files": {
+      "wells.parquet": {
+        "bytes": 8286353,
+        "sha256": "b70798071b3deed9eba4eca0667d90a1cb3be14bb3ed034b8411d1a661bbab0d"
+      },
+      "well_events.parquet": {
+        "bytes": 2117040,
+        "sha256": "1aea1e4d46fa3fbc9d3d643c7d5ae3e214aa6a7b03b5ac4326f573cfdb2bcca8"
+      },
+      "well_operator_history.parquet": {
+        "bytes": 611047,
+        "sha256": "4da9b9fe16e6fefa73f668dab1e4867f15f938f8301105c0a102f2d50c8078c3"
+      },
+      "monthly_production/anio=2006/data.parquet": {
+        "bytes": 6483231,
+        "sha256": "a07a483a08eea16287c52c50836d60e78d739c18e0aa1cf8ee946a3cbead5227"
+      },
+      "monthly_production/anio=2007/data.parquet": {
+        "bytes": 5952744,
+        "sha256": "e9a475dda1e6d07bd8fe6c218cf1f74db79dba65aabdcd64a0504653818fb868"
+      },
+      "monthly_production/anio=2008/data.parquet": {
+        "bytes": 6309250,
+        "sha256": "38f001cf95e89483a9c1136a9f83c91e25827696cab1641a14ee1539da3d7824"
+      },
+      "monthly_production/anio=2009/data.parquet": {
+        "bytes": 6568031,
+        "sha256": "e9db3396fd8a388c43ed4ec420056f998ca330bcea1c250a7726df3f735fba1d"
+      },
+      "monthly_production/anio=2010/data.parquet": {
+        "bytes": 6667218,
+        "sha256": "5b092f57a51e8cd5e22040cb42cfd93400f2cbeb105d8af600c7bb223420c599"
+      },
+      "monthly_production/anio=2011/data.parquet": {
+        "bytes": 6725828,
+        "sha256": "ff1146430241ffa9d56e603cfa810a8fbc5a67f1501dee1cad4d1e2f7bec91fb"
+      },
+      "monthly_production/anio=2012/data.parquet": {
+        "bytes": 6956857,
+        "sha256": "5e0ffa3b94a403fa7fd1cda4be36493d152d37c08c6e0f2ef42d360c2cdaccec"
+      },
+      "monthly_production/anio=2013/data.parquet": {
+        "bytes": 7232874,
+        "sha256": "20f054b71ed1b6a8963ea3a085e1138a33f078c4d575099f1079fe7ec38815b9"
+      },
+      "monthly_production/anio=2014/data.parquet": {
+        "bytes": 7457840,
+        "sha256": "882d5c47da262512626ea78b8dc9ee1f7146145b7e2cb6cf271bc6e845128b0d"
+      },
+      "monthly_production/anio=2015/data.parquet": {
+        "bytes": 7642903,
+        "sha256": "234244ccd4e7b335b16bded402ceeff27c633f2346ce615625156ac17c2eeed4"
+      },
+      "monthly_production/anio=2016/data.parquet": {
+        "bytes": 7824704,
+        "sha256": "41a19b590232674ef5ac87ba5d7ff7568b11014e394edbe9fa3b6dc9f6a4f711"
+      },
+      "monthly_production/anio=2017/data.parquet": {
+        "bytes": 7849257,
+        "sha256": "aaa4431fabb2be81f998476eea23d3698d2f53f696c48579f7d284100dae5a3c"
+      },
+      "monthly_production/anio=2018/data.parquet": {
+        "bytes": 7818652,
+        "sha256": "150cabcce80d1b582df419bbdcb7c8620795ef2711b0978f61d0520eec8d94f8"
+      },
+      "monthly_production/anio=2019/data.parquet": {
+        "bytes": 7935229,
+        "sha256": "e21ffea8814914e774f9fc50c0501f0c179e6e3ac78f31c36db2bb63f28dac2a"
+      },
+      "monthly_production/anio=2020/data.parquet": {
+        "bytes": 7683395,
+        "sha256": "5a7a64d358b2b405cfb2ad780c0be10cf43949ef7190a5d1d7168b4792410abc"
+      },
+      "monthly_production/anio=2021/data.parquet": {
+        "bytes": 7794949,
+        "sha256": "17d51942a524a02e753d921bd23064bff3ea9c0dbe0d3ffb993f4731ef745b7b"
+      },
+      "monthly_production/anio=2022/data.parquet": {
+        "bytes": 7852724,
+        "sha256": "10ac29296abaae174290c617524ec39d57a95b01d3c3524b220d1c8a86dc3b22"
+      },
+      "monthly_production/anio=2023/data.parquet": {
+        "bytes": 7914328,
+        "sha256": "0976703423e6d2c1dc6d48d9a1d29a76dc00fcaf037b9e487b21c24f47531fff"
+      },
+      "monthly_production/anio=2024/data.parquet": {
+        "bytes": 7990975,
+        "sha256": "42aa520c132e1dc84d49f469431ebeadc0e41cf187f3b868673f40b8517e7ef7"
+      },
+      "monthly_production/anio=2025/data.parquet": {
+        "bytes": 7973845,
+        "sha256": "a85eda1c7deffb358f21266598ba637093a3abed7062836426c30a658bdab008"
+      }
+    }
+  },
+  "portal": {
+    "fetched_at": "2026-08-10T20:23:49+00:00",
+    "ckan_base": "https://datos.energia.gob.ar",
+    "resources": {
+      "serie_historica_petroleo.csv": {
+        "package_id": "c846e79c-026c-4040-897f-1ad3543b407c",
+        "resource_id": "af8c50bb-fde0-43b7-98eb-7cd14daf586c",
+        "url": "http://datos.energia.gob.ar/dataset/c846e79c-026c-4040-897f-1ad3543b407c/resource/af8c50bb-fde0-43b7-98eb-7cd14daf586c/download/serie-histrica-de-produccin-de-petrleo-por-cuenca-y-sub-tipo-de-recurso-captulo-iv-.csv",
+        "last_modified": "2026-07-21T05:09:01.355644",
+        "licence": "CC BY 4.0",
+        "bytes": 32267,
+        "sha256": "c1750f567742208b54fc06f31fa020ed911b854d59b12dcefb2e046859b90de5",
+        "purpose": "Official monthly oil totals by basin and resource subtype \u2014 ground truth"
+      },
+      "serie_historica_gas.csv": {
+        "package_id": "c846e79c-026c-4040-897f-1ad3543b407c",
+        "resource_id": "a3244ddd-38bc-4800-a700-360b649d2f3a",
+        "url": "http://datos.energia.gob.ar/dataset/c846e79c-026c-4040-897f-1ad3543b407c/resource/a3244ddd-38bc-4800-a700-360b649d2f3a/download/serie-histrica-de-produccin-de-gas-natural-por-cuenca-y-sub-tipo-de-recurso-captulo-iv-.csv",
+        "last_modified": "2026-03-21T05:09:04.410598",
+        "licence": "CC BY 4.0",
+        "bytes": 30757,
+        "sha256": "3489414946f15172437d171c9b0a8a590b6fe3a8359c5bba49612b94964e5ff2",
+        "purpose": "Official monthly gas totals by basin and resource subtype \u2014 ground truth"
+      },
+      "padron_primera_produccion.csv": {
+        "package_id": "c846e79c-026c-4040-897f-1ad3543b407c",
+        "resource_id": "5578dd48-d0dd-487e-8ddc-bd3ebb1afef0",
+        "url": "http://datos.energia.gob.ar/dataset/c846e79c-026c-4040-897f-1ad3543b407c/resource/5578dd48-d0dd-487e-8ddc-bd3ebb1afef0/download/padrn-de-pozos-de-captulo-iv-con-fecha-de-primera-produccin.csv",
+        "last_modified": "2026-08-10T09:02:39.502712",
+        "licence": "CC BY 4.0",
+        "bytes": 1169489,
+        "sha256": "ebf85f3f82919152d3096bad6508a86404e42eaa3f74f2c2fb58a794e39187cc",
+        "purpose": "First production month per idpozo \u2014 the months-on-production axis"
+      },
+      "capitulo_iv_pozos.csv": {
+        "package_id": "c846e79c-026c-4040-897f-1ad3543b407c",
+        "resource_id": "cb5c0f04-7835-45cd-b982-3e25ca7d7751",
+        "url": "http://datos.energia.gob.ar/dataset/c846e79c-026c-4040-897f-1ad3543b407c/resource/cb5c0f04-7835-45cd-b982-3e25ca7d7751/download/capitulo-iv-pozos.csv",
+        "last_modified": "2026-07-08T16:48:15.183339",
+        "licence": "CC BY 4.0",
+        "bytes": 34133626,
+        "sha256": "44c466133c7881753d49204bebf8e0ff3d0960c92ec7d7c0c63868946fd78e87",
+        "purpose": "Well registry with geojson + WKB geometry \u2014 independent check on coordinates"
+      },
+      "fractura_adjunto_iv.csv": {
+        "package_id": "71fa2e84-0316-4a1b-af68-7f35e41f58d7",
+        "resource_id": "2280ad92-6ed3-403e-a095-50139863ab0d",
+        "url": "http://datos.energia.gob.ar/dataset/71fa2e84-0316-4a1b-af68-7f35e41f58d7/resource/2280ad92-6ed3-403e-a095-50139863ab0d/download/datos-de-fractura-de-pozos-de-hidrocarburos-adjunto-iv-actualizacin-diaria.csv",
+        "last_modified": "2026-08-10T04:00:02.405580",
+        "licence": "CC BY 4.0",
+        "bytes": 1213936,
+        "sha256": "fe1ff6d01d2f77e7a7cb856e851af414b2c5596c663e9942f82ad38a55b723b3",
+        "purpose": "Per-fracture-job completion data \u2014 trajectory, stages, proppant, fluid"
+      }
+    }
+  },
+  "outputs": {
+    "summary.json": {
+      "bytes": 245994,
+      "sha256": "557a2a1745e78ddcba4e94fbeb2337e85ff13b8b1b2726df2d6b1e85cb3b7687"
+    },
+    "agg_monthly.parquet": {
+      "bytes": 4692541,
+      "rows": 296154,
+      "sha256": "99ab358ce5076855bffea78fc7cc367302c2ba22a26a6ee06843dc0daf88afb9"
+    },
+    "wells_slim.parquet": {
+      "bytes": 3287786,
+      "sha256": "6b1de4168d5f8eeedda81fe398194758753bc445bcd54e6197511005f4b88b71"
+    },
+    "typecurve.parquet": {
+      "bytes": 294564,
+      "rows": 17876,
+      "sha256": "83cc2777a01a7d31761d4a8fb6e569867116c1a55c3dba996d058eea74c83348"
+    },
+    "monthly": {
+      "2006": {
+        "bytes": 3949957,
+        "sha256": "042545b4759ace790459513c9e30e67cb97d69a5ffa4ae0301877dfe5e77098f"
+      },
+      "2007": {
+        "bytes": 4042170,
+        "sha256": "1bd84e2d2935ced02d9ce0f29e212869d7131daa4f16fa56ac65e4469f90a7f0"
+      },
+      "2008": {
+        "bytes": 4301429,
+        "sha256": "ed28af768b0bfdb8d0bc8b4e2406efbeb7e95bad0debceb3c4466c07b78f144c"
+      },
+      "2009": {
+        "bytes": 4456186,
+        "sha256": "b325ed6c6b9a58de0f3409066224139fd205e6fb05e5cebdd0b9f77b45520221"
+      },
+      "2010": {
+        "bytes": 4577762,
+        "sha256": "86c649a2d083acba468462c3badb17d6c00165e2407a2a61063de1847e180eee"
+      },
+      "2011": {
+        "bytes": 4580569,
+        "sha256": "d7ba493237042e072f948e101b6adab022054d768de9060955bd6f5379bcdf13"
+      },
+      "2012": {
+        "bytes": 4717696,
+        "sha256": "0266c10b5f3e5dfa636f9ed3bdcd0531b30edb6965845a9eeb9a8f36feaa4e7b"
+      },
+      "2013": {
+        "bytes": 4978271,
+        "sha256": "d8cb5d0520f1fb4d36a2c5745e4a40125368503eebc4d3c5ea0f68c475502b09"
+      },
+      "2014": {
+        "bytes": 5191237,
+        "sha256": "559a032b472171721614cbb69038c2f7a3d8f8f815f64213cedff3bbdd656d47"
+      },
+      "2015": {
+        "bytes": 5346859,
+        "sha256": "0834012e9e5c34400300fd21db57521922040edcaef9038cfd28116b06a7e536"
+      },
+      "2016": {
+        "bytes": 5545420,
+        "sha256": "6aa949ef3a51263062a732dc0aae244d95a7ac51376c060d39dc2baa9483e530"
+      },
+      "2017": {
+        "bytes": 5518635,
+        "sha256": "65a651a6a93fcda7c981afe8ed48209455d5736ad03eb9a78c9ab4ab6877a863"
+      },
+      "2018": {
+        "bytes": 5507402,
+        "sha256": "a09de22bad7bc78bc7066bbafc725b9a1235819c10b46c586caacf7565ea696a"
+      },
+      "2019": {
+        "bytes": 5598742,
+        "sha256": "2318f115cfc1361d89c1e99a912303fe2e13f8412bfe7ce6a660e49e159036dc"
+      },
+      "2020": {
+        "bytes": 5553192,
+        "sha256": "267ecb5590753e545facb8954dc59898b07cdfd941069c9c68466defda8b1133"
+      },
+      "2021": {
+        "bytes": 5560823,
+        "sha256": "6efc7dcadb9df0b7eda3ebd2b7d88d12be6085596cc342636b67f5b5343a56b4"
+      },
+      "2022": {
+        "bytes": 5596503,
+        "sha256": "391d816105bc5666c61210e9a26766b838bf3c1529bad2ef2e98197e83929eff"
+      },
+      "2023": {
+        "bytes": 5557025,
+        "sha256": "e223022b2b148c6b30c17d29d2a291243fe6196528cf153cc492d94636638b54"
+      },
+      "2024": {
+        "bytes": 5634612,
+        "sha256": "51e37ac3cfc6e4f3d3cc916bce7db9126fa763e1b0401ffebeb9ec3eb30e1a24"
+      },
+      "2025": {
+        "bytes": 5631918,
+        "sha256": "69ee09ec86ed405e149b176fd5379d8fe29c7caa38f5f38271c9489930536cb9"
+      }
+    }
+  },
+  "licence": {
+    "petrodb": "CC BY 4.0 \u2014 sumpalabs/petrodb, curated by Oscar Cortez",
+    "portal": "CC BY 4.0 \u2014 Secretar\u00eda de Energ\u00eda de la Naci\u00f3n, datos.energia.gob.ar"
+  }
+}

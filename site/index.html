@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Argentina Oil &amp; Gas — open production data</title>
+<meta name="description" content="Interactive analysis of Argentina's public well-level oil and gas production data, 2006–2025. Filter by basin, formation, operator, well type and trajectory.">
+<link rel="stylesheet" href="css/app.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>🛢️</text></svg>">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-in">
+    <div class="brand">
+      <h1>Argentina Oil &amp; Gas</h1>
+      <p class="sub">Open well-level production data · <span id="coverage">…</span></p>
+    </div>
+    <button id="theme-toggle" class="icon-btn" type="button"
+            aria-label="Switch between light and dark theme">
+      <span aria-hidden="true">◐</span>
+    </button>
+  </div>
+  <nav class="tabs" role="tablist" aria-label="Views">
+    <button role="tab" data-view="overview"    aria-selected="true">Overview</button>
+    <button role="tab" data-view="explorer"    aria-selected="false">Explorer</button>
+    <button role="tab" data-view="map"         aria-selected="false">Map</button>
+    <button role="tab" data-view="statistics"  aria-selected="false">Statistics</button>
+    <button role="tab" data-view="performance" aria-selected="false">Well performance</button>
+    <button role="tab" data-view="about"       aria-selected="false">Data &amp; method</button>
+  </nav>
+</header>
+
+<!-- One filter row, above everything it scopes. Never inside a chart card. -->
+<section id="filterbar" class="filterbar" hidden aria-label="Filters">
+  <div class="filterbar-in">
+    <div id="facets" class="facets"></div>
+    <div class="filter-actions">
+      <label class="units-toggle">
+        <input type="checkbox" id="unit-toggle">
+        <span>Oilfield units (bbl / Mcf)</span>
+      </label>
+      <span id="selection-summary" class="selection-summary"></span>
+      <button id="reset-filters" class="btn-quiet" type="button">Reset</button>
+    </div>
+  </div>
+</section>
+
+<main id="main">
+  <div id="boot" class="boot">
+    <p class="boot-title">Loading data…</p>
+    <p id="boot-detail" class="boot-detail">summary</p>
+  </div>
+</main>
+
+<footer class="sitefoot">
+  <p>
+    Data: <strong>Secretaría de Energía de la Nación (Argentina)</strong>,
+    <em>Producción de petróleo y gas por pozo (Capítulo IV)</em> and
+    <em>Datos de fractura de pozos (Adjunto IV)</em>,
+    <a href="https://datos.energia.gob.ar/" rel="noopener">datos.energia.gob.ar</a> —
+    <a href="https://creativecommons.org/licenses/by/4.0/" rel="noopener">CC BY 4.0</a>.
+    Repackaged as Parquet by <em>PetroData Repository</em>
+    (<a href="https://sumpalabs.com/petrodb/" rel="noopener">sumpalabs.com/petrodb</a>),
+    curated by Oscar Cortez — CC BY 4.0.
+  </p>
+  <p class="muted">
+    This site is an independent, non-commercial analysis. It is not affiliated with,
+    nor endorsed by, either publisher. Full provenance, checksums and the
+    verification report are on the <a href="#/about">Data &amp; method</a> page.
+  </p>
+</footer>
+
+<!-- ECharts ships as a UMD bundle, so it becomes the global `echarts` rather
+     than an ES module import. Loaded before the app module: classic scripts run
+     in order and always before deferred modules, so `echarts` is defined by the
+     time any chart is drawn. Vendored locally — no CDN. -->
+<script src="vendor/echarts.min.js"></script>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>

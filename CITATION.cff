@@ -1,0 +1,41 @@
+cff-version: 1.2.0
+title: Argentina Oil & Gas — open production dashboard
+message: >-
+  If you use this dashboard or its derived data, please cite the underlying
+  data publishers as well as this work. The data is not mine; the analysis is.
+type: software
+authors:
+  - name: Maximilian Haas
+license: MIT
+repository-code: "https://github.com/"
+abstract: >-
+  Interactive static-site analysis of Argentina's public well-level oil and gas
+  production data (2006-2025), joined to the official hydraulic fracture record
+  to derive well trajectory and completion intensity.
+
+references:
+  - type: data
+    title: Producción de petróleo y gas por pozo (Capítulo IV)
+    authors:
+      - name: Secretaría de Energía de la Nación (Argentina)
+    url: "https://datos.energia.gob.ar/dataset/produccion-de-petroleo-y-gas-por-pozo"
+    license: CC-BY-4.0
+    notes: "CKAN package c846e79c-026c-4040-897f-1ad3543b407c. Accessed 2026-08-10."
+
+  - type: data
+    title: Datos de fractura de pozos de hidrocarburos (Adjunto IV)
+    authors:
+      - name: Secretaría de Energía de la Nación (Argentina)
+    url: "https://datos.energia.gob.ar/dataset/datos-de-fractura-de-pozos-adjunto-iv"
+    license: CC-BY-4.0
+    notes: "CKAN package 71fa2e84-0316-4a1b-af68-7f35e41f58d7. Accessed 2026-08-10."
+
+  - type: data
+    title: "PetroData Repository: Argentina production dataset (Parquet)"
+    authors:
+      - name: Oscar Cortez
+    url: "https://sumpalabs.com/petrodb/"
+    license: CC-BY-4.0
+    notes: >-
+      Parquet repackaging of the Capítulo IV production data, hosted at
+      huggingface.co/datasets/sumpalabs/petrodb. Snapshot 2026-08-10.
