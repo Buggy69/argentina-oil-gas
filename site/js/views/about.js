@@ -129,9 +129,9 @@ export async function render(root, ctx) {
         <tbody>
           ${Object.entries(outputs).filter(([k]) => k !== 'monthly')
             .map(([k, v]) => fileRow(k, v)).join('')}
-          ${outputs.monthly ? `<tr><td>monthly/ (${Object.keys(outputs.monthly).length} yearly files)</td>
+          ${outputs.wells_buckets ? `<tr><td>wells/ (${Object.keys(outputs.wells_buckets).length} buckets by well id)</td>
             <td>—</td>
-            <td>${(Object.values(outputs.monthly).reduce((a, b) => a + b.bytes, 0) / 1048576).toFixed(1)} MB</td>
+            <td>${(Object.values(outputs.wells_buckets).reduce((a, b) => a + b.bytes, 0) / 1048576).toFixed(1)} MB</td>
             <td>—</td></tr>` : ''}
         </tbody></table></div>
       <p class="source">Generated ${esc((prov.generated || '').replace('T', ' '))}.
@@ -145,10 +145,10 @@ export async function render(root, ctx) {
         <p>This is a static page. There is no server, no database and no
         account: the browser downloads Parquet files and queries them itself.
         The pre-aggregated cube (${num(outputs['agg_monthly.parquet']?.rows)} rows)
-        and the per-well table load at start; a single well's full monthly
-        history is fetched on demand using HTTP range requests against files
-        sorted by well id, so opening one well transfers around a megabyte
-        rather than the ${(Object.values(outputs.monthly || {})
+        and the per-well table load at start; the full monthly history is
+        sharded into 256 buckets by well id, so opening one well fetches a
+        single file of roughly 400 KB rather than the
+        ${(Object.values(outputs.wells_buckets || {})
           .reduce((a, b) => a + b.bytes, 0) / 1048576).toFixed(0)} MB the
         complete history occupies.</p>
         <p>Nothing is loaded from a third-party host — no CDN, no fonts, no map

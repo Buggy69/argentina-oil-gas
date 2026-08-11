@@ -58,8 +58,39 @@ all the others. Unsorted, that well's rows are scattered through every row group
 no statistics can exclude anything, and reading one well means reading the whole
 file.
 
-Two things had to be true before that theory produced the practice, and both
-were wrong in the first version:
+### The part where the host overruled the design
+
+All of the above is true, and on GitHub Pages it is unusable.
+
+Pages compresses `application/octet-stream` whenever the client accepts gzip —
+which every browser does — and then applies `Range` **to the compressed
+stream**. The response says so plainly:
+
+```
+Content-Range: bytes 0-1023/4618105     <- compressed size, not the real 4690132
+```
+
+So a request for the file's last eight bytes returns the last eight bytes of a
+gzip stream. The reader looks for the Parquet magic `PAR1`, finds noise, and
+rejects the file. A browser cannot avoid this: `Accept-Encoding` is a
+*forbidden header name*, so `fetch()` is not permitted to ask for the
+uncompressed bytes.
+
+The fix was to stop needing ranges. Tier C is now sharded **by well** —
+`wells/bucket=<idpozo % 256>/data.parquet` holds the complete history of every
+well in that bucket — so opening a well is one whole-file GET of ~400 KB, which
+compression cannot corrupt because the browser decodes it transparently. It also
+came out smaller (93 MB against 105 MB), because grouping a well's twenty years
+together compresses better than splitting them across twenty files.
+
+The lesson worth keeping: this bug could not be reproduced locally. A plain dev
+server does not compress, so the range path worked perfectly on `localhost` and
+failed the moment it met a CDN. Verifying against the deployed URL was not
+ceremony — it was the only place the defect existed.
+
+### Two earlier mistakes on the same feature
+
+Both were wrong in the first version, and both are worth keeping as examples:
 
 **The reader has to actually prune.** The obvious implementation asks hyparquet
 for the file and filters rows in JavaScript. That is correct and it downloads

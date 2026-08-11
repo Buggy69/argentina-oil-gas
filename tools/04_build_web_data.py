@@ -146,42 +146,53 @@ def main() -> int:
     """)
 
     # ------------------------------------------------------------------ 3 --
-    # Tier C: the full history, one file per year, sorted by idpozo so that
-    # row-group statistics can prune. Columns are pruned to what a well-level
-    # view needs — the categorical attributes all live in wells_slim and are
-    # joined client-side on idpozo.
-    print("building tier C (one file per year, sorted for range reads) …")
-    monthly_dir = SITE / "monthly"
-    if monthly_dir.exists():
-        shutil.rmtree(monthly_dir)
-    years = [r[0] for r in con.execute(
-        "SELECT DISTINCT anio FROM prod_monthly ORDER BY anio").fetchall()]
+    # Tier C: the full well-month history, sharded BY WELL rather than by year.
+    #
+    # THE HOST DICTATES THIS LAYOUT
+    # ------------------------------
+    # The obvious layout is one file per year, sorted by idpozo, letting the
+    # browser pull one well out with HTTP range requests guided by Parquet's
+    # row-group statistics. That is a good design and it does not work on
+    # GitHub Pages: Pages gzips application/octet-stream whenever the client
+    # accepts gzip (browsers always do, and fetch() is forbidden from saying
+    # otherwise), and it then applies Range to the COMPRESSED stream. Byte
+    # offsets computed against the real file address the wrong data, and the
+    # Parquet footer check fails outright.
+    #
+    # So: shard by well. Each bucket holds the complete history of every well
+    # whose id falls in it, which makes a drill-down exactly one small
+    # whole-file GET — no ranges, nothing for the CDN's compression to break,
+    # and the browser decodes Content-Encoding transparently.
+    #
+    # The modulus is the tuning knob: more buckets means a smaller download per
+    # well and more files. 256 puts each bucket near half a megabyte.
+    BUCKETS = 256
+    print(f"building tier C ({BUCKETS} buckets sharded by well) …")
+    wells_dir = SITE / "wells"
+    if wells_dir.exists():
+        shutil.rmtree(wells_dir)
+    # Removed by the reshard; delete any stale copy from a previous build so the
+    # published site cannot serve a layout the code no longer reads.
+    if (SITE / "monthly").exists():
+        shutil.rmtree(SITE / "monthly")
+
     tier_c: dict[str, dict] = {}
-    for year in years:
-        dest = monthly_dir / f"anio={year}"
+    for b in range(BUCKETS):
+        dest = wells_dir / f"bucket={b}"
         dest.mkdir(parents=True, exist_ok=True)
         out = dest / "data.parquet"
         con.execute(f"""
             COPY (
                 SELECT idpozo, fecha, prod_pet AS oil_m3, prod_gas AS gas_e3m3,
                        prod_agua AS water_m3, tef AS effective_hours
-                FROM prod_monthly WHERE anio = {year} ORDER BY idpozo, fecha
+                FROM prod_monthly
+                WHERE idpozo % {BUCKETS} = {b}
+                ORDER BY idpozo, fecha
             ) TO '{out.as_posix()}'
-            (FORMAT parquet, COMPRESSION zstd, ROW_GROUP_SIZE 5000)
+            (FORMAT parquet, COMPRESSION zstd)
         """)
-        # ROW_GROUP_SIZE is the resolution of the pruning, and therefore the
-        # thing that decides what one well costs to read. A row group is the
-        # smallest unit a reader can skip: at 50,000 rows each group is ~300 KB
-        # and opening a single well pulled ~10 MB across the twenty years. At
-        # 5,000 the same query moves a fraction of that.
-        #
-        # The cost is a larger footer (more groups to describe) and slightly
-        # worse compression (less data per group for the encoder to exploit).
-        # Both are measured in the size budget below — this is a deliberate
-        # trade of a little total size for a large drop in per-query bytes,
-        # which is the right way round when the file is read over HTTP.
-        tier_c[str(year)] = {"bytes": out.stat().st_size,
-                             "sha256": sha256(out)}
+        tier_c[str(b)] = {"bytes": out.stat().st_size, "sha256": sha256(out)}
+    tier_c_buckets = BUCKETS
 
     # ------------------------------------------------------------- 3b ------
     # Tier B, part 3: pre-computed type curves.
@@ -341,9 +352,10 @@ def main() -> int:
         ("wells_slim.parquet (tier B)", wells_p.stat().st_size, 5 * 1_048_576, ""),
         ("typecurve.parquet (tier B)", (SITE / "typecurve.parquet").stat().st_size,
          3 * 1_048_576, f"{tc_rows:,} rows"),
-        ("monthly/ (tier C, 20 files)", tier_c_total,
+        (f"wells/ (tier C, {tier_c_buckets} buckets)", tier_c_total,
          B["tier_c_max_total_mb"] * 1_048_576, ""),
-        ("largest tier C file", tier_c_max, B["tier_c_max_file_mb"] * 1_048_576, ""),
+        ("largest tier C bucket", tier_c_max, B["tier_c_max_file_mb"] * 1_048_576,
+         "= the cost of opening one well"),
     ):
         ok = "OK " if size <= budget else "OVER"
         print(f"  {ok} {label:<30}{mb(size):>8.2f} MB   budget {mb(budget):>7.1f} MB"
@@ -374,7 +386,15 @@ def main() -> int:
             "typecurve.parquet": {"bytes": (SITE / "typecurve.parquet").stat().st_size,
                                   "rows": tc_rows,
                                   "sha256": sha256(SITE / "typecurve.parquet")},
-            "monthly": tier_c,
+            "wells_buckets": tier_c,
+        },
+        "tier_c_layout": {
+            "path": "data/wells/bucket=<idpozo % 256>/data.parquet",
+            "buckets": tier_c_buckets,
+            "why": ("Sharded by well, not by year: GitHub Pages gzips this "
+                    "content type and applies Range to the compressed stream, "
+                    "so range-based reads cannot work. One whole small file "
+                    "per drill-down instead."),
         },
         "licence": {
             "petrodb": "CC BY 4.0 — sumpalabs/petrodb, curated by Oscar Cortez",

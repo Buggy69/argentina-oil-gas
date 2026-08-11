@@ -25,8 +25,11 @@
    a phone.
    =========================================================================== */
 
-import { asyncBufferFromUrl, cachedAsyncBuffer, parquetRead, parquetMetadataAsync }
-  from '../vendor/hyparquet.mjs';
+// Only parquetRead is needed now. The range-reading helpers
+// (asyncBufferFromUrl, cachedAsyncBuffer, parquetMetadataAsync) were dropped
+// with the year-sharded layout — see fetchBuffer below for why ranges are not
+// usable on this host.
+import { parquetRead } from '../vendor/hyparquet.mjs';
 import { compressors } from '../vendor/hyparquet-compressors.mjs';
 
 /** Milliseconds in a day — Parquet DATE columns are days since the epoch. */
@@ -86,9 +89,39 @@ export class Table {
  * which is why loading is proportional to what we use rather than to what the
  * file contains.
  */
+/**
+ * Fetch a whole file into memory as an ArrayBuffer.
+ *
+ * WHY NOT asyncBufferFromUrl (which reads by HTTP range)
+ * ------------------------------------------------------
+ * GitHub Pages compresses `application/octet-stream` when the client accepts
+ * gzip — which every browser does, and which `fetch()` cannot opt out of,
+ * because `Accept-Encoding` is a forbidden header name the Fetch spec refuses
+ * to let script set.
+ *
+ * When it compresses, it applies `Range` to the COMPRESSED stream:
+ *
+ *     Content-Range: bytes 0-1023/4618105     <- compressed total, not 4690132
+ *
+ * So a request for "the last 8 bytes" returns the last 8 bytes of the gzip
+ * stream, the reader looks for the Parquet magic `PAR1` and finds noise, and
+ * the whole file is declared invalid. Locally it all works, because a plain
+ * dev server does not compress — which is exactly the kind of bug that only
+ * exists in production.
+ *
+ * Fetching whole and letting the browser decode Content-Encoding transparently
+ * sidesteps it entirely. These are files we read in full anyway, so nothing is
+ * lost: gzip even makes the transfer slightly smaller.
+ */
+async function fetchBuffer(url) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`${url}: HTTP ${res.status}`);
+  return res.arrayBuffer();
+}
+
 export async function loadTable(url, spec, onProgress) {
   const names = Object.keys(spec);
-  const file = await asyncBufferFromUrl({ url });
+  const file = await fetchBuffer(url);
 
   // One read for all requested columns, delivered as arrays-of-values per row.
   // We transpose immediately and never retain the row arrays, so the peak
@@ -159,67 +192,54 @@ export async function loadJSON(url) {
  * fetches only those byte ranges. That is why this costs a few hundred
  * kilobytes instead of the 97 MB the full history occupies.
  */
-export async function loadWellHistory(idpozo, years, base = 'data/monthly') {
-  const out = [];
+/** Must match BUCKETS in tools/04_build_web_data.py. */
+export const WELL_BUCKETS = 256;
 
-  // Sequential, not Promise.all over twenty years. Each file needs several
-  // range requests, and firing all twenty at once produced enough concurrent
-  // requests that some simply failed. Twenty small sequential reads are also
-  // fast enough that the difference is invisible to a user.
-  for (const year of years) {
-    const url = `${base}/anio=${year}/data.parquet`;
-    // cachedAsyncBuffer memoises byte ranges, so the footer fetched for the
-    // metadata is not fetched again when the data pages are read.
-    const file = cachedAsyncBuffer(await asyncBufferFromUrl({ url }));
-    const meta = await parquetMetadataAsync(file);
+/**
+ * One well's complete monthly history.
+ *
+ * Tier C is sharded by well: `data/wells/bucket=<idpozo % 256>/data.parquet`
+ * holds the full history of every well in that bucket, so this is a single
+ * whole-file GET of roughly half a megabyte — no range requests, and therefore
+ * nothing for the host's gzip to corrupt (see fetchBuffer above for why that
+ * matters).
+ *
+ * The bucket is fetched once and cached, because a reader comparing wells
+ * usually opens several, and neighbouring ids share a bucket often enough to
+ * make the second lookup free.
+ */
+const bucketCache = new Map();
 
-    // --- row-group pruning -------------------------------------------------
-    // This is the step that makes Tier C viable, and it has to be done
-    // explicitly: reading the file and filtering rows in JavaScript downloads
-    // every byte, which defeats the entire point of sorting by idpozo.
-    //
-    // Parquet's footer carries per-row-group, per-column min/max statistics.
-    // The files are sorted by idpozo, so a given well lives in one or two row
-    // groups and every other group can be excluded from its statistics alone.
-    let rowOffset = 0;
-    const ranges = [];
-    for (const rg of meta.row_groups) {
-      const n = Number(rg.num_rows);
-      const col = rg.columns.find(c =>
-        (c.meta_data?.path_in_schema || []).join('.') === 'idpozo');
-      const st = col?.meta_data?.statistics;
-      // No statistics means "cannot rule it out" — read it rather than risk
-      // silently dropping the well's rows.
-      const lo = st?.min_value ?? st?.min;
-      const hi = st?.max_value ?? st?.max;
-      const overlaps = (lo == null || hi == null)
-        || (idpozo >= Number(lo) && idpozo <= Number(hi));
-      if (overlaps) ranges.push([rowOffset, rowOffset + n]);
-      rowOffset += n;
-    }
-    if (!ranges.length) continue;
+export async function loadWellHistory(idpozo, base = 'data/wells') {
+  const bucket = ((idpozo % WELL_BUCKETS) + WELL_BUCKETS) % WELL_BUCKETS;
+  const url = `${base}/bucket=${bucket}/data.parquet`;
 
-    for (const [rowStart, rowEnd] of ranges) {
+  let rowsPromise = bucketCache.get(url);
+  if (!rowsPromise) {
+    rowsPromise = (async () => {
+      const file = await fetchBuffer(url);
+      let all = [];
       await parquetRead({
-        file, compressors, rowFormat: 'object', rowStart, rowEnd,
+        file, compressors, rowFormat: 'object',
         columns: ['idpozo', 'fecha', 'oil_m3', 'gas_e3m3', 'water_m3'],
-        onComplete: (rows) => {
-          for (const r of rows) {
-            // Still filter: a row group is a coarse unit and contains
-            // neighbouring wells too.
-            if (Number(r.idpozo) !== idpozo) continue;
-            out.push({
-              month: toMonthIndex(r.fecha),
-              oil: r.oil_m3 == null ? NaN : Number(r.oil_m3),
-              gas: r.gas_e3m3 == null ? NaN : Number(r.gas_e3m3),
-              water: r.water_m3 == null ? NaN : Number(r.water_m3),
-            });
-          }
-        },
+        onComplete: (rows) => { all = rows; },
       });
-    }
+      return all;
+    })();
+    bucketCache.set(url, rowsPromise);
   }
 
+  const rows = await rowsPromise;
+  const out = [];
+  for (const r of rows) {
+    if (Number(r.idpozo) !== idpozo) continue;
+    out.push({
+      month: toMonthIndex(r.fecha),
+      oil: r.oil_m3 == null ? NaN : Number(r.oil_m3),
+      gas: r.gas_e3m3 == null ? NaN : Number(r.gas_e3m3),
+      water: r.water_m3 == null ? NaN : Number(r.water_m3),
+    });
+  }
   out.sort((a, b) => a.month - b.month);
   return out;
 }
