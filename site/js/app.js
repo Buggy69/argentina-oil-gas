@@ -38,8 +38,45 @@ const FACETS = [
   ['sub_tipo_recurso', 'Shale / tight', 'wells'],
 ];
 
+/* wells_slim is split in two.
+   CORE is what the filter bar and the Overview need, and nothing else — it is
+   on the critical path, so every column here delays the first usable screen.
+   DETAIL is everything the Map, Statistics and Well-performance views need; it
+   is decoded on first navigation to one of those, by which point the user has
+   told us they want it. Decoding is the dominant start-up cost, so this is the
+   difference between paying for all thirty columns up front and paying for
+   nine. */
+const WELLS_CORE = {
+  idpozo: 'num', cuenca: 'cat', provincia: 'cat', formation: 'cat',
+  operator: 'cat', well_fluid: 'cat', trajectory: 'cat',
+  tipo_recurso: 'cat', sub_tipo_recurso: 'cat',
+};
+
+const WELLS_DETAIL = {
+  sigla: 'cat', area: 'cat', yacimiento: 'cat', well_state: 'cat',
+  completion_type: 'cat',
+  lon: 'num', lat: 'num', depth_m: 'num', producing_months: 'num',
+  first_prod_month: 'date', last_prod_month: 'date',
+  cum_oil_m3: 'num', cum_gas_e3m3: 'num', cum_water_m3: 'num',
+  lateral_m: 'num', stages: 'num', proppant_t: 'num',
+  proppant_kg_per_m: 'num', stage_spacing_m: 'num', gor_m3_m3: 'num',
+};
+
+/** Views that read anything from WELLS_DETAIL. */
+const NEEDS_WELL_DETAIL = new Set(['map', 'statistics', 'performance']);
+
 const ctx = { summary: null, cube: null, wells: null, typecurve: null,
               provenance: null, basins: [], years: [], ready: false };
+
+/** Decode the detail columns once, on demand. Memoised by the promise itself. */
+let wellDetailPromise = null;
+ctx.ensureWellDetail = async () => {
+  if (!wellDetailPromise) {
+    const { extendTable } = await import('./store.js');
+    wellDetailPromise = extendTable(ctx.wells, 'data/wells_slim.parquet', WELLS_DETAIL);
+  }
+  return wellDetailPromise;
+};
 
 let current = null;   // { name, module }
 
@@ -186,6 +223,13 @@ async function renderView(force = false) {
 
   if (force || !current || current.name !== name) {
     const mod = await VIEWS[name]();
+    // Views that read per-well detail wait for those columns to be decoded.
+    // The first such navigation pays for it; every later one is instant.
+    if (NEEDS_WELL_DETAIL.has(name)) {
+      main.innerHTML = '<div class="boot"><p class="boot-title">Preparing '
+        + 'well-level data…</p></div>';
+      await ctx.ensureWellDetail();
+    }
     current = { name, module: mod };
     // Tear the old charts down before their elements are discarded. ECharts
     // instances do not clean themselves up when their container is removed.
@@ -279,19 +323,7 @@ async function boot() {
       wells: 'num', wells_producing: 'num', oil_m3: 'num', gas_e3m3: 'num',
       water_m3: 'num', water_inj_m3: 'num',
     }),
-    loadTable('data/wells_slim.parquet', {
-      idpozo: 'num', sigla: 'cat', cuenca: 'cat', provincia: 'cat', area: 'cat',
-      yacimiento: 'cat', formation: 'cat', tipo_recurso: 'cat',
-      sub_tipo_recurso: 'cat', operator: 'cat', well_fluid: 'cat',
-      well_state: 'cat', trajectory: 'cat', completion_type: 'cat',
-      lon: 'num', lat: 'num', depth_m: 'num', producing_months: 'num',
-      // Month indices, used to fetch only the years a well actually produced in
-      // when its full history is opened.
-      first_prod_month: 'date', last_prod_month: 'date',
-      cum_oil_m3: 'num', cum_gas_e3m3: 'num', cum_water_m3: 'num',
-      lateral_m: 'num', stages: 'num', proppant_t: 'num',
-      proppant_kg_per_m: 'num', stage_spacing_m: 'num', gor_m3_m3: 'num',
-    }),
+    loadTable('data/wells_slim.parquet', WELLS_CORE),
     loadTable('data/typecurve.parquet', {
       trajectory: 'cat', subtype: 'cat', cuenca: 'cat', vintage: 'num',
       month_on_prod: 'num', wells: 'num',

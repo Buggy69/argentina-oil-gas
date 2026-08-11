@@ -149,22 +149,20 @@ async function fetchBuffer(url) {
   return res.arrayBuffer();
 }
 
-export async function loadTable(url, spec, onProgress) {
-  const names = Object.keys(spec);
-  const file = await fetchBuffer(url);
-
-  // Row count up front, straight from the footer, so every column array can be
-  // allocated once at full size instead of grown.
-  const meta = parquetMetadata(file);
-  const n = Number(meta.num_rows);
-
+/** Allocate the destination arrays for a column spec, at full row count. */
+function allocate(spec, n) {
   const cols = {};
-  for (const name of names) {
+  for (const name of Object.keys(spec)) {
     cols[name] = spec[name] === 'cat'
       ? { kind: 'cat', codes: new Int32Array(n), dict: [], index: new Map() }
       : { kind: spec[name],
           values: spec[name] === 'date' ? new Int32Array(n) : new Float64Array(n) };
   }
+  return cols;
+}
+
+async function decodeInto(file, spec, cols) {
+  const names = Object.keys(spec);
 
   /* COLUMN CHUNKS, NOT ROWS.
    *
@@ -212,9 +210,45 @@ export async function loadTable(url, spec, onProgress) {
     },
   });
 
+  // The string->code map is only needed while building; dropping it frees a
+  // Map the size of each column's distinct-value count.
   for (const name of names) if (cols[name].kind === 'cat') delete cols[name].index;
+  return cols;
+}
+
+export async function loadTable(url, spec, onProgress) {
+  const file = await fetchBuffer(url);
+  // Row count up front, straight from the footer, so every column array can be
+  // allocated once at full size instead of grown.
+  const n = Number(parquetMetadata(file).num_rows);
+  const cols = allocate(spec, n);
+  await decodeInto(file, spec, cols);
   if (onProgress) onProgress(n);
   return new Table(n, cols);
+}
+
+/**
+ * Decode additional columns of the SAME file into a table already loaded.
+ *
+ * Decoding is the dominant cost of start-up, and most of `wells_slim`'s
+ * columns are not needed to draw the first screen — nobody has opened the map
+ * or the statistics page yet. Loading the handful the filter bar needs at boot
+ * and the rest on first use moves that work out of the critical path.
+ *
+ * The file is fetched again rather than held in memory: the browser serves it
+ * from cache, so this costs no network and keeps several megabytes of
+ * ArrayBuffer from being retained for a page that may never need it.
+ */
+export async function extendTable(table, url, spec) {
+  const missing = Object.fromEntries(
+    Object.entries(spec).filter(([name]) => !table.cols[name]));
+  if (!Object.keys(missing).length) return table;
+
+  const file = await fetchBuffer(url);
+  const cols = allocate(missing, table.n);
+  await decodeInto(file, missing, cols);
+  Object.assign(table.cols, cols);
+  return table;
 }
 
 /** Fetch and parse JSON, with a useful error if the path is wrong. */
