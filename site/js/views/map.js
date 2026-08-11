@@ -16,6 +16,28 @@ import { getSource, selectRows, valueAt } from '../query.js';
 import { queryFilters, state } from '../state.js';
 import { num, compact, convert, units, esc } from '../format.js';
 import { draw, baseOption, merge, palette, OTHER_GREY, legendHTML } from '../charts.js';
+import { loadJSON } from '../store.js';
+
+/* The basemap is Argentina's 24 provinces, the national outline and the
+   neighbouring countries, compiled into the site at build time from Natural
+   Earth (public domain). 117 KB, fetched once when this view first opens —
+   there is no tile server anywhere in this application, so the map cannot be
+   broken by a filter or an outage that has nothing to do with us. */
+let basemapPromise = null;
+let neighbourNames = [];
+
+async function ensureBasemap() {
+  if (!basemapPromise) {
+    basemapPromise = loadJSON('data/geo/basemap.json').then((geo) => {
+      neighbourNames = geo.features
+        .filter(f => f.properties.layer === 'neighbour')
+        .map(f => f.properties.name);
+      echarts.registerMap('argentina', geo);
+      return geo;
+    });
+  }
+  return basemapPromise;
+}
 
 const COLOR_BY = [
   ['trajectory', 'Trajectory', 3],
@@ -28,7 +50,8 @@ let colorBy = 'trajectory';
 let highlight = null;
 let sizeBy = 'cum_oil_m3';
 
-export function render(root, ctx) {
+export async function render(root, ctx) {
+  await ensureBasemap();
   root.innerHTML = `
     <div class="grid">
       <section class="card">
@@ -58,7 +81,11 @@ export function render(root, ctx) {
         <div id="mp-legend"></div>
         <p class="source">Coordinates are WGS 84 decimal degrees as published
           (SRID 4326, confirmed by decoding the geometry). Wells without a
-          coordinate are omitted and counted below.</p>
+          coordinate are omitted and counted above. Drag to pan, scroll or pinch
+          to zoom. Provincial and national boundaries from
+          <a href="https://www.naturalearthdata.com/" rel="noopener">Natural Earth</a>
+          (public domain), compiled into this page — no map tiles are loaded
+          from anywhere.</p>
       </section>
     </div>`;
 
@@ -126,7 +153,13 @@ export function update(root, ctx) {
     if (!classes.has(key)) classes.set(key, []);
     // sqrt sizing: the eye reads a disc by area, so radius must scale with the
     // square root of the value or big wells look quadratically bigger.
-    const s = sizeCol ? 2 + 7 * Math.sqrt(Math.max(0, sizeCol[i] || 0) / sizeMax) : 3;
+    //
+    // The floor is 2.6 px, not 0: production is so skewed that scaling from
+    // zero renders the ordinary well — the overwhelming majority — as a
+    // sub-pixel dot, and the map showed empty space where 44,000 Golfo San
+    // Jorge wells actually are. A visible minimum keeps "a well exists here"
+    // legible while area still carries the magnitude.
+    const s = sizeCol ? 2.6 + 7 * Math.sqrt(Math.max(0, sizeCol[i] || 0) / sizeMax) : 3;
     classes.get(key).push([x, y, s, i]);
   }
 
@@ -145,6 +178,7 @@ export function update(root, ctx) {
   const uniform = sizeCol == null;
   const series = keys.map(k => ({
     name: k, type: 'scatter',
+    coordinateSystem: 'geo',      // plot in lon/lat against the basemap
     ...(uniform
       ? { large: true, largeThreshold: 2000, symbolSize: 4 }
       : { progressive: 6000, progressiveThreshold: 3000,
@@ -155,39 +189,45 @@ export function update(root, ctx) {
       .getPropertyValue('--surface-1').trim(), borderWidth: 2 } },
   }));
 
-  /* Aspect correction.
-     Longitude and latitude are both "degrees", but a degree of longitude spans
-     less ground than a degree of latitude, by cos(latitude) — about 0.75 at
-     Argentina's mid-latitudes. Plot raw degrees into a wide, short card and the
-     country comes out stretched sideways, which is simply a wrong map.
+  /* The geo component handles the projection and the aspect ratio itself, which
+     replaces a block of hand-rolled arithmetic that computed the plot rectangle
+     from cos(latitude). It also brings pan and zoom (`roam`) for free — mouse
+     wheel and drag on a desktop, pinch on a phone. */
+  const css = (v) => getComputedStyle(document.documentElement)
+    .getPropertyValue(v).trim();
 
-     The fix is to size the PLOT RECTANGLE to the data's true aspect and centre
-     it, rather than padding the data range to fill the card. Padding the range
-     was the first attempt and it "worked" — at the cost of showing 126° of
-     empty ocean either side of a sliver of Argentina. Argentina is tall and
-     narrow, so the plot ends up a tall column with margin on both sides, which
-     is what an honest equirectangular map of it looks like. */
-  let lo = Infinity, hi = -Infinity, la = Infinity, lb = -Infinity;
-  for (const pts of classes.values()) for (const p of pts) {
-    if (p[0] < lo) lo = p[0]; if (p[0] > hi) hi = p[0];
-    if (p[1] < la) la = p[1]; if (p[1] > lb) lb = p[1];
-  }
-  if (!Number.isFinite(lo)) { lo = -74; hi = -53; la = -56; lb = -21; }
-  const padX = (hi - lo) * 0.03, padY = (lb - la) * 0.03;
-  lo -= padX; hi += padX; la -= padY; lb += padY;
-
-  const el = root.querySelector('#mp-chart');
-  const MARGIN = { left: 52, right: 16, top: 12, bottom: 46 };
-  const availW = Math.max(40, el.clientWidth - MARGIN.left - MARGIN.right);
-  const availH = Math.max(40, el.clientHeight - MARGIN.top - MARGIN.bottom);
-  const kLon = Math.cos((la + lb) / 2 * Math.PI / 180);
-  const dataAspect = ((hi - lo) * kLon) / (lb - la);
-
-  let gridW, gridH;
-  if (dataAspect < availW / availH) { gridH = availH; gridW = availH * dataAspect; }
-  else { gridW = availW; gridH = availW / dataAspect; }
-  const gridLeft = MARGIN.left + (availW - gridW) / 2;
-  const gridTop = MARGIN.top + (availH - gridH) / 2;
+  const geo = {
+    map: 'argentina',
+    roam: true,
+    top: 10, bottom: 30,
+    // Frame Argentina, not the union of everything in the file. Without this
+    // the view is sized to include the clipped corner of Brazil, which shrinks
+    // the country and pushes it off-centre; the neighbours still draw, they
+    // just extend past the frame as context should.
+    boundingCoords: [[-74.5, -21.0], [-52.5, -56.0]],
+    // Regions are scenery, not data: no hover highlight, no selection, so the
+    // wells stay the only interactive thing on the canvas.
+    silent: false,
+    emphasis: { disabled: true },
+    selectedMode: false,
+    itemStyle: {
+      areaColor: css('--map-land'),
+      borderColor: css('--grid'),
+      borderWidth: 1,
+    },
+    regions: [
+      // Neighbours recede: they are context, not subject.
+      ...neighbourNames.map(name => ({
+        name,
+        itemStyle: { areaColor: 'transparent', borderColor: css('--grid'),
+                     borderWidth: 0.5, opacity: 0.55 },
+      })),
+      // The national border reads heavier than the internal province lines.
+      { name: 'Argentina',
+        itemStyle: { areaColor: 'transparent', borderColor: css('--axis'),
+                     borderWidth: 1.5 } },
+    ],
+  };
 
   const shown = idx.length - missing - outside;
   root.querySelector('#mp-note').innerHTML =
@@ -199,10 +239,8 @@ export function update(root, ctx) {
 
   draw(root.querySelector('#mp-chart'), merge(baseOption(), {
     legend: { show: false },
-    // containLabel must stay off: it re-flows the grid to fit axis labels,
-    // which would undo the aspect ratio computed just above.
-    grid: { left: gridLeft, top: gridTop, width: gridW, height: gridH,
-            containLabel: false },
+    grid: undefined,
+    geo,
     tooltip: {
       trigger: 'item',
       formatter: (p) => {
@@ -216,15 +254,10 @@ export function update(root, ctx) {
           `<br>Cum oil ${compact(convert.oil(oil), 2)} ${units.oil()}`;
       },
     },
-    xAxis: { type: 'value', name: 'longitude', nameLocation: 'middle',
-      min: +lo.toFixed(3), max: +hi.toFixed(3),
-      nameGap: 24, nameTextStyle: { fontSize: 11 },
-      axisLabel: { formatter: v => v.toFixed(1) + '°' },
-      splitLine: { show: true, lineStyle: { color: getComputedStyle(document.documentElement)
-        .getPropertyValue('--grid').trim(), type: 'solid' } } },
-    yAxis: { type: 'value',
-      min: +la.toFixed(3), max: +lb.toFixed(3),
-      axisLabel: { formatter: v => v.toFixed(1) + '°' } },
+    // No xAxis/yAxis: the geo component supplies the coordinate system, and
+    // leaving degree axes in place would double up on it.
+    xAxis: undefined,
+    yAxis: undefined,
     series,
   }));
 

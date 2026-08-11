@@ -30,6 +30,10 @@
   --seq-100:#cde2fb; --seq-250:#86b6ef; --seq-400:#3987e5;
   --seq-550:#1c5cab; --seq-700:#0d366b;
 
+  /* Map land: one step away from the card surface in each theme, so the
+     country reads as a filled shape rather than as a hole cut in the card. */
+  --map-land: #f1f0ea;
+
   --radius: 10px;
   --gap: 16px;
   --font: system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -45,6 +49,7 @@
     --good: #0ca30c;
     --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500;
     --s5:#d55181; --s6:#008300; --s7:#9085e9; --s8:#e66767;
+    --map-land: #24241f;
   }
 }
 :root[data-theme="dark"] {
@@ -56,6 +61,7 @@
   --good: #0ca30c;
   --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500;
   --s5:#d55181; --s6:#008300; --s7:#9085e9; --s8:#e66767;
+  --map-land: #24241f;
 }
 
 * { box-sizing: border-box; }
