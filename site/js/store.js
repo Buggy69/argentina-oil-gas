@@ -149,14 +149,26 @@ async function fetchBuffer(url) {
   return res.arrayBuffer();
 }
 
-/** Allocate the destination arrays for a column spec, at full row count. */
+/**
+ * Allocate the destination arrays for a column spec, at full row count.
+ *
+ * A spec entry is 'num' | 'cat' | 'date', or `{ labels: [...] }` for a column
+ * already stored as integer codes — the labels come from a sidecar rather than
+ * from the file, so nothing has to build a dictionary at all.
+ */
 function allocate(spec, n) {
   const cols = {};
   for (const name of Object.keys(spec)) {
-    cols[name] = spec[name] === 'cat'
-      ? { kind: 'cat', codes: new Int32Array(n), dict: [], index: new Map() }
-      : { kind: spec[name],
-          values: spec[name] === 'date' ? new Int32Array(n) : new Float64Array(n) };
+    const kind = spec[name];
+    if (kind && typeof kind === 'object' && kind.labels) {
+      cols[name] = { kind: 'cat', codes: new Int32Array(n),
+                     dict: kind.labels, coded: true };
+    } else if (kind === 'cat') {
+      cols[name] = { kind: 'cat', codes: new Int32Array(n), dict: [], index: new Map() };
+    } else {
+      cols[name] = { kind,
+        values: kind === 'date' ? new Int32Array(n) : new Float64Array(n) };
+    }
   }
   return cols;
 }
@@ -184,7 +196,15 @@ async function decodeInto(file, spec, cols) {
       const start = Number(chunk.rowStart);
       const kind = col.kind;
 
-      if (kind === 'cat') {
+      if (col.coded) {
+        // Already integers in the file; the labels came from the sidecar.
+        // This is the whole point of storing codes: a straight copy.
+        const codes = col.codes;
+        for (let i = 0; i < data.length; i++) {
+          const v = data[i];
+          codes[start + i] = (v == null) ? -1 : v;
+        }
+      } else if (kind === 'cat') {
         const { codes, dict, index } = col;
         for (let i = 0; i < data.length; i++) {
           const v = data[i];
@@ -212,7 +232,7 @@ async function decodeInto(file, spec, cols) {
 
   // The string->code map is only needed while building; dropping it frees a
   // Map the size of each column's distinct-value count.
-  for (const name of names) if (cols[name].kind === 'cat') delete cols[name].index;
+  for (const name of names) if (cols[name].index) delete cols[name].index;
   return cols;
 }
 

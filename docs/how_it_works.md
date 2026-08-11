@@ -127,6 +127,42 @@ drawing anything, it would be blank for several seconds on a phone. Instead the
 first meaningful paint needs 40 KB, and the heavier tier arrives while the reader
 is already reading.
 
+## 4b. What made it fast, and what didn't
+
+Start-up was 10 s to interactive when it first went live. Getting it down was
+mostly a story of wrong guesses, so the measurements are worth keeping.
+
+| Change | Interactive | Verdict |
+|---|---|---|
+| baseline | 10.2 s | |
+| decode columns, not rows (`onChunk`) | 8.1 s | kept |
+| integer date maths instead of `Date` | 7.7 s | kept, marginal |
+| Snappy instead of ZSTD | 7.2 s | **reverted** — 8% for +2.5 MB |
+| run-length dictionary fast path | no change | **reverted** |
+| dimensions as integer codes + label sidecar | ~150 ms/col saved | kept |
+| load only the columns the first screen needs | **5.0 s** | the real win |
+| render Tier A before any Parquet | **0.9 s to a usable page** | the actual fix |
+
+Three things this taught, none of which were obvious beforehand:
+
+**The bottleneck was not where it looked.** Decompression seemed the obvious
+suspect, so Snappy was tried — 8% faster for 2.5 MB more download. Then string
+dictionary building seemed obvious, so values were run-length compared and then
+stored as integer codes — barely measurable. Isolating one column at a time
+finally showed the truth: decode costs **150–220 ms per 296k-row column,
+whatever the type**. The only lever that mattered was *how many columns*.
+
+**Which made lazy loading the answer, twice.** `wells_slim` has 30 columns and
+the first screen needs 9; the cube has 15 and the Overview needs 8. The rest are
+decoded when a view that uses them is opened. Same pattern, applied in two
+places, for the largest single improvement.
+
+**But the fix that actually mattered was not an optimisation at all.** Rendering
+the Overview from the 40 KB summary means the page is complete and readable at
+~0.9 s regardless of what the Parquet is doing. The remaining decode happens
+behind an already-useful page. Making slow work faster is worth less than making
+it not block.
+
 ## 5. Why not DuckDB-WASM
 
 The plan originally called for DuckDB compiled to WebAssembly — a real SQL engine

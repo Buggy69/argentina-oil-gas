@@ -64,6 +64,11 @@ const WELLS_DETAIL = {
 
 /** Views that read anything from WELLS_DETAIL. */
 const NEEDS_WELL_DETAIL = new Set(['map', 'statistics', 'performance']);
+/** Views that break the cube down by a dimension outside CUBE_CORE. */
+const NEEDS_CUBE_DETAIL = new Set(['explorer']);
+
+// Assigned during boot, once dims.json has supplied the label tables.
+let CUBE_CORE = null, CUBE_DETAIL = null;
 
 const ctx = { summary: null, cube: null, wells: null, typecurve: null,
               provenance: null, basins: [], years: [], ready: false };
@@ -77,6 +82,41 @@ ctx.ensureWellDetail = async () => {
   }
   return wellDetailPromise;
 };
+
+let cubeDetailPromise = null;
+ctx.ensureCubeDetail = async () => {
+  if (!cubeDetailPromise) {
+    cubeDetailPromise = (async () => {
+      const { extendTable } = await import('./store.js');
+      await extendTable(ctx.cube, 'data/agg_monthly.parquet', CUBE_DETAIL);
+      // The stable colour ordering needs the dimensions that just arrived.
+      computeOrder(Object.keys(CUBE_DETAIL));
+      return ctx.cube;
+    })();
+  }
+  return cubeDetailPromise;
+};
+
+/** Rank a dimension's values by total oil-equivalent, over the whole dataset.
+ *  Stable across filters — that is what stops a filter repainting the series
+ *  that survive it. */
+function computeOrder(dims) {
+  const cube = ctx.cube;
+  const oil = cube.cols.oil_m3.values, gas = cube.cols.gas_e3m3.values;
+  for (const dim of dims) {
+    const col = cube.cols[dim];
+    if (!col || col.kind !== 'cat') continue;
+    const totals = new Map();
+    const codes = col.codes;
+    for (let i = 0; i < cube.n; i++) {
+      const k = codes[i]; if (k < 0) continue;
+      const v = (oil[i] || 0) + (gas[i] || 0);
+      totals.set(k, (totals.get(k) || 0) + (Number.isNaN(v) ? 0 : v));
+    }
+    ctx.order[dim] = [...totals.entries()].sort((a, b) => b[1] - a[1])
+      .map(([k]) => col.dict[k]);
+  }
+}
 
 let current = null;   // { name, module }
 
@@ -225,10 +265,11 @@ async function renderView(force = false) {
     const mod = await VIEWS[name]();
     // Views that read per-well detail wait for those columns to be decoded.
     // The first such navigation pays for it; every later one is instant.
-    if (NEEDS_WELL_DETAIL.has(name)) {
+    if (NEEDS_WELL_DETAIL.has(name) || NEEDS_CUBE_DETAIL.has(name)) {
       main.innerHTML = '<div class="boot"><p class="boot-title">Preparing '
-        + 'well-level data…</p></div>';
-      await ctx.ensureWellDetail();
+        + 'data…</p></div>';
+      if (NEEDS_WELL_DETAIL.has(name)) await ctx.ensureWellDetail();
+      if (NEEDS_CUBE_DETAIL.has(name)) await ctx.ensureCubeDetail();
     }
     current = { name, module: mod };
     // Tear the old charts down before their elements are discarded. ECharts
@@ -312,17 +353,38 @@ async function boot() {
   }
 
   say('production cube (4.5 MB)');
+
+  // The cube's dimensions are stored as integer codes with their labels in a
+  // small sidecar, so decoding them is a copy rather than 2.4 million string
+  // materialisations. dims.json is a few kilobytes and arrives with summary.
+  const dims = await loadJSON('data/dims.json');
+  const coded = (name) => ({ labels: dims[name] || [] });
+
+  /* The cube is split for the same reason wells_slim is, and the measurement
+     that justifies it: decode costs ~150-220 ms per 296k-row column whatever
+     the type, so the only lever is how many columns are decoded before the page
+     is usable. The Overview needs eight; the other six exist for the Explorer's
+     break-down dimensions, and are decoded when someone opens it.
+     Note the facet lists come from `wells`, not the cube, so the filter bar is
+     complete from the start regardless. */
+  CUBE_CORE = {
+    fecha: 'date',
+    cuenca: coded('cuenca'), sub_tipo_recurso: coded('sub_tipo_recurso'),
+    operator: coded('operator'),
+    oil_m3: 'num', gas_e3m3: 'num', water_m3: 'num', wells_producing: 'num',
+  };
+  CUBE_DETAIL = {
+    provincia: coded('provincia'), tipo_recurso: coded('tipo_recurso'),
+    formation: coded('formation'), well_fluid: coded('well_fluid'),
+    trajectory: coded('trajectory'),
+    // No idpozo anywhere here on purpose: the cube is aggregated, so an
+    // individual well id does not exist at this grain. Well-level questions go
+    // to the `wells` source instead.
+    wells: 'num', water_inj_m3: 'num',
+  };
+
   const [cube, wells, typecurve, provenance] = await Promise.all([
-    loadTable('data/agg_monthly.parquet', {
-      fecha: 'date', cuenca: 'cat', provincia: 'cat', tipo_recurso: 'cat',
-      sub_tipo_recurso: 'cat', formation: 'cat', operator: 'cat',
-      well_fluid: 'cat', trajectory: 'cat',
-      // No idpozo here on purpose: the cube is aggregated, so an individual
-      // well id does not exist at this grain. Well-level questions go to the
-      // `wells` source instead.
-      wells: 'num', wells_producing: 'num', oil_m3: 'num', gas_e3m3: 'num',
-      water_m3: 'num', water_inj_m3: 'num',
-    }),
+    loadTable('data/agg_monthly.parquet', CUBE_CORE),
     loadTable('data/wells_slim.parquet', WELLS_CORE),
     loadTable('data/typecurve.parquet', {
       trajectory: 'cat', subtype: 'cat', cuenca: 'cat', vintage: 'num',
@@ -337,22 +399,12 @@ async function boot() {
   registerSource('typecurve', typecurve);
   ctx.cube = cube; ctx.wells = wells; ctx.typecurve = typecurve;
   ctx.provenance = provenance;
-  /* Stable colour ordering, computed once over the FULL dataset.
-     Ranked by total oil-equivalent so the basins and operators that matter get
-     the strong slots, and never recomputed for a selection — that is what stops
-     a filter from repainting the series that survive it. */
+  // Stable colour ordering for the dimensions available now; the rest are
+  // ranked when the Explorer pulls them in.
   ctx.order = {};
+  computeOrder(Object.keys(CUBE_CORE));
   for (const [dim] of FACETS) {
-    if (!cube.cols[dim]) { ctx.order[dim] = wells.domain(dim).map(d => d.value); continue; }
-    const totals = new Map();
-    const codes = cube.cols[dim].codes, dict = cube.cols[dim].dict;
-    const oil = cube.cols.oil_m3.values, gas = cube.cols.gas_e3m3.values;
-    for (let i = 0; i < cube.n; i++) {
-      const k = codes[i]; if (k < 0) continue;
-      const v = (oil[i] || 0) + (gas[i] || 0);
-      totals.set(k, (totals.get(k) || 0) + (Number.isNaN(v) ? 0 : v));
-    }
-    ctx.order[dim] = [...totals.entries()].sort((a, b) => b[1] - a[1]).map(([k]) => dict[k]);
+    if (!ctx.order[dim]) ctx.order[dim] = wells.domain(dim).map(d => d.value);
   }
   ctx.basins = ctx.order.cuenca || wells.domain('cuenca').map(d => d.value);
   ctx.years = [...new Set(

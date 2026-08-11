@@ -22,6 +22,32 @@
 <meta name="twitter:description" content="17.8 million well-months of Argentina's open government production data, 2006–2025. Reconciled against the publisher's own figures.">
 
 <link rel="stylesheet" href="css/app.css">
+
+<!-- START THE CRITICAL FETCHES DURING HTML PARSING.
+
+     Without these the browser discovers what it needs serially: parse the HTML,
+     fetch js/app.js, parse it, fetch its six imports, execute, and only then
+     request summary.json. That chain measured 2.5 s to the first painted chart
+     on a cold load, for a 37 KB file — almost all of it waiting for the
+     round-trips ahead of it rather than for bytes.
+
+     modulepreload fixes it: the whole module graph is fetched in parallel while
+     the HTML is still being parsed, instead of one round-trip per import depth.
+
+     Data files are deliberately NOT preloaded with `as="fetch"`. That was tried
+     and measured: a preload only satisfies a later request if the CORS mode and
+     credentials match exactly, and `crossorigin` on the link does not match the
+     app's plain same-origin fetch(), so every file was downloaded twice —
+     turning an 8 MB load into 16 MB and making Tier A four times slower. The
+     modules below are safe because modulepreload matches module fetches by
+     definition. -->
+<link rel="modulepreload" href="js/app.js">
+<link rel="modulepreload" href="js/store.js">
+<link rel="modulepreload" href="js/query.js">
+<link rel="modulepreload" href="js/state.js">
+<link rel="modulepreload" href="js/format.js">
+<link rel="modulepreload" href="js/charts.js">
+<link rel="modulepreload" href="js/views/overview.js">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>🛢️</text></svg>">
 </head>
 <body>
@@ -95,10 +121,14 @@
 </footer>
 
 <!-- ECharts ships as a UMD bundle, so it becomes the global `echarts` rather
-     than an ES module import. Loaded before the app module: classic scripts run
-     in order and always before deferred modules, so `echarts` is defined by the
-     time any chart is drawn. Vendored locally — no CDN. -->
-<script src="vendor/echarts.min.js"></script>
+     than an ES module import.
+
+     `defer` matters: without it this 365 KB classic script blocks the parser,
+     delaying discovery of everything below it. Deferred scripts execute in
+     document order and always before module scripts, so `echarts` is still
+     guaranteed to be defined before any chart is drawn — but the parser is free
+     to keep going while it downloads. Vendored locally — no CDN. -->
+<script defer src="vendor/echarts.min.js"></script>
 <script type="module" src="js/app.js"></script>
 </body>
 </html>

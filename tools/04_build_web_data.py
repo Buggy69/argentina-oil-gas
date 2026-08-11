@@ -125,11 +125,53 @@ def main() -> int:
     cube_rows = con.execute("SELECT count(*) FROM agg_monthly").fetchone()[0]
     print(f"  cube rows: {cube_rows:,}")
 
+    # DIMENSIONS AS INTEGER CODES, LABELS IN A SIDECAR.
+    #
+    # The cube's dimensions have tiny cardinality — 3 trajectories, 11 basins,
+    # 31 formations — but stored as strings they force the browser's Parquet
+    # reader to materialise one JavaScript string per row per column: 2.4
+    # million of them, measured at 2.4 s of the 3.5 s start-up decode.
+    #
+    # Written as small integers they decode as numbers, which is nearly free,
+    # and the label tables ride along in a JSON file measured in kilobytes. The
+    # in-memory representation is unchanged — the store already keeps
+    # categoricals as codes plus a dictionary, so this simply stops round-
+    # tripping through strings on the way there.
+    CUBE_DIMS = ["cuenca", "provincia", "tipo_recurso", "sub_tipo_recurso",
+                 "formation", "operator", "well_fluid", "trajectory"]
+
+    dims: dict[str, list[str]] = {}
+    for d in CUBE_DIMS:
+        vals = [r[0] for r in con.execute(
+            f"SELECT DISTINCT {d} FROM agg_monthly WHERE {d} IS NOT NULL "
+            f"ORDER BY {d}").fetchall()]
+        dims[d] = vals
+        con.execute(f"CREATE OR REPLACE TABLE dimmap_{d} AS "
+                    f"SELECT * FROM (VALUES " +
+                    ",".join(f"(?, {i})" for i in range(len(vals))) +
+                    f") AS t(val, code)", vals)
+
+    joins = " ".join(
+        f"LEFT JOIN dimmap_{d} m_{d} ON m_{d}.val = c.{d}" for d in CUBE_DIMS)
+    cols = ", ".join(
+        f"coalesce(m_{d}.code, -1)::INTEGER AS {d}" for d in CUBE_DIMS)
+
     con.execute(f"""
-        COPY (SELECT * FROM agg_monthly ORDER BY fecha, cuenca)
+        COPY (
+            SELECT c.fecha, {cols},
+                   c.wells, c.wells_producing, c.oil_m3, c.gas_e3m3,
+                   c.water_m3, c.water_inj_m3, c.effective_hours
+            FROM agg_monthly c {joins}
+            ORDER BY c.fecha, c.cuenca
+        )
         TO '{(SITE / 'agg_monthly.parquet').as_posix()}'
         (FORMAT parquet, COMPRESSION zstd, ROW_GROUP_SIZE 100000)
     """)
+    (SITE / "dims.json").write_text(
+        json.dumps(dims, separators=(",", ":"), ensure_ascii=False),
+        encoding="utf-8")
+    print(f"  dimension labels: {sum(len(v) for v in dims.values())} values, "
+          f"{(SITE / 'dims.json').stat().st_size / 1024:.1f} KB")
 
     # ------------------------------------------------------------------ 2 --
     # Tier B, part 2: one row per well. This drives the map, the well-level
