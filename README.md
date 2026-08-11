@@ -1,5 +1,7 @@
 # Argentina Oil & Gas — open production dashboard
 
+**→ [buggy69.github.io/argentina-oil-gas](https://buggy69.github.io/argentina-oil-gas/)**
+
 An interactive analysis of Argentina's public well-level oil and gas production
 data, 2006–2025. Static site, no server, no accounts, no tracking. Open it on a
 phone or a laptop and slice 17.8 million well-months yourself.
