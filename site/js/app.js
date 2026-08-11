@@ -255,6 +255,11 @@ async function boot() {
       current = { name: 'overview', module: ov, root };
       ov.renderFromSummary(root, ctx);
       refreshUnitLabels();
+      // Honest self-measurement. Paint metrics from an automated or
+      // backgrounded tab are unreliable (the browser throttles rendering when
+      // the tab is not visible), so the app records when its own milestones
+      // actually completed. Readable at any time via performance.getEntriesByType('mark').
+      performance.mark('tierA-rendered');
     } catch (e) {
       // The fast path is an optimisation; if it fails the full render still
       // runs a moment later, so never let it break the boot.
@@ -323,11 +328,22 @@ async function boot() {
   )].sort();
   ctx.ready = true;
 
+  performance.mark('tables-decoded');
+
   buildFilterBar();
   onChange(() => { syncFilterBar(); renderView(); });
   window.addEventListener('hashchange', () => { readHash(); syncFilterBar(); renderView(true); });
 
   await renderView(true);
+  performance.mark('interactive');
+
+  // One line, only when asked for. Anyone can check the page's real timings in
+  // their own browser rather than taking a README's word for them.
+  if (location.search.includes('perf')) {
+    const m = Object.fromEntries(performance.getEntriesByType('mark')
+      .map(e => [e.name, Math.round(e.startTime) + ' ms']));
+    console.log('[petrodb] load milestones', m);
+  }
 }
 
 boot().catch(err => {
