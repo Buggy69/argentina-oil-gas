@@ -54,12 +54,29 @@ every CDN honours.
 
 This is why `04_build_web_data.py` writes Tier C **sorted by `idpozo`**. Sorted,
 one well's rows land in one or two row groups, and the min/max statistics exclude
-all the others; opening a single well costs a few hundred kilobytes. Unsorted,
-that well's rows are scattered through every row group, no statistics can exclude
-anything, and reading one well means reading the whole file.
+all the others. Unsorted, that well's rows are scattered through every row group,
+no statistics can exclude anything, and reading one well means reading the whole
+file.
 
-Same bytes, same format, same reader. The sort order is the entire difference
-between a 300 KB request and a 97 MB one.
+Two things had to be true before that theory produced the practice, and both
+were wrong in the first version:
+
+**The reader has to actually prune.** The obvious implementation asks hyparquet
+for the file and filters rows in JavaScript. That is correct and it downloads
+every byte — the pruning never happens, because nothing ever consulted the
+statistics. `loadWellHistory` now reads the footer itself, compares `idpozo`
+against each row group's min/max, and reads only the row ranges that can match.
+
+**Row-group size is the resolution of the pruning.** A row group is the smallest
+unit that can be skipped, so it decides the floor on what one query costs. At
+50,000 rows per group each group was ~300 KB and one well pulled 10.4 MB across
+twenty files. At 5,000 rows, plus only fetching the years the well actually
+produced in, the same well costs **1.2 MB in 14 requests, 219 ms** — 1.1% of the
+tier. The whole Tier C grew 97 → 105 MB in exchange, which is the right way to
+trade when the file is read over HTTP rather than from disk.
+
+Same bytes, same format, same reader. Sort order and row-group size are the
+entire difference between a 1 MB request and a 105 MB one.
 
 > Note: `python -m http.server` does **not** implement Range — it returns 200
 > and the whole file. So this optimisation is invisible in local development and

@@ -31,7 +31,8 @@ export async function render(root, ctx) {
       <div class="prose">
         <p>An independent, non-commercial analysis of Argentina's public
         well-level oil and gas production data, covering
-        <strong>${esc(cov.first_month ?? '')} to ${esc(cov.last_month ?? '')}</strong>
+        <strong>${esc(String(cov.first_month ?? '').slice(0, 7))} to
+        ${esc(String(cov.last_month ?? '').slice(0, 7))}</strong>
         — ${num(cov.months)} months and ${num(kpi.wells)} wells.</p>
 
         <h3>How to cite</h3>
@@ -135,9 +136,11 @@ export async function render(root, ctx) {
         account: the browser downloads Parquet files and queries them itself.
         The pre-aggregated cube (${num(outputs['agg_monthly.parquet']?.rows)} rows)
         and the per-well table load at start; a single well's full monthly
-        history is fetched on demand using HTTP range requests, so opening one
-        well costs a few hundred kilobytes rather than the 97 MB the complete
-        history occupies.</p>
+        history is fetched on demand using HTTP range requests against files
+        sorted by well id, so opening one well transfers around a megabyte
+        rather than the ${(Object.values(outputs.monthly || {})
+          .reduce((a, b) => a + b.bytes, 0) / 1048576).toFixed(0)} MB the
+        complete history occupies.</p>
         <p>Nothing is loaded from a third-party host — no CDN, no fonts, no map
         tiles, no analytics. Every visitor's browser talks only to the server
         hosting this page, which means no corporate web filter, ad blocker or

@@ -67,11 +67,27 @@ export function update(root, ctx) {
     { as: 'water', col: 'water_m3', agg: 'sum' },
   ] })[0] || { oil: 0, gas: 0, water: 0 };
 
-  const unconv = query({
-    source: 'cube',
-    filters: { ...f, sub_tipo_recurso: ['SHALE', 'TIGHT'] },
-    measures: [{ as: 'oil', col: 'oil_m3', agg: 'sum' }],
-  })[0] || { oil: 0 };
+  /* The unconventional share must be a share OF the current selection, so its
+     numerator has to be a strict subset of the denominator. Spreading
+     `{...f, sub_tipo_recurso: ['SHALE','TIGHT']}` *overrides* whatever the user
+     picked instead of narrowing it — with "Shale" selected that put TIGHT wells
+     in the numerator and not the denominator, and the tile read 100.1%.
+
+     Intersect instead. Note the empty case is not "no filter": buildMask treats
+     an empty array as an absent constraint, so an empty intersection has to be
+     short-circuited to zero rather than passed through. */
+  const UNCONV = ['SHALE', 'TIGHT'];
+  const userSub = f.sub_tipo_recurso;
+  const unconvSel = Array.isArray(userSub) && userSub.length
+    ? userSub.filter(v => UNCONV.includes(v))
+    : UNCONV;
+  const unconv = unconvSel.length
+    ? (query({
+        source: 'cube',
+        filters: { ...f, sub_tipo_recurso: unconvSel },
+        measures: [{ as: 'oil', col: 'oil_m3', agg: 'sum' }],
+      })[0] || { oil: 0 })
+    : { oil: 0 };
 
   const wellRows = query({ source: 'wells', filters: queryFilters(null),
     measures: [{ as: 'n', col: 'idpozo', agg: 'count' }] })[0] || { n: 0 };
@@ -141,11 +157,13 @@ export function update(root, ctx) {
     measures: [{ as: 'v', col: 'oil_m3', agg: 'sum' }] })) totByMonth.set(r.fecha, r.v);
 
   const subScale = makeScale(['SHALE', 'TIGHT']);
-  const subRows = query({
-    source: 'cube', filters: { ...f, sub_tipo_recurso: ['SHALE', 'TIGHT'] },
+  // Same intersection rule as the tile above: narrow the user's selection,
+  // never replace it, so the percentage can never exceed 100.
+  const subRows = unconvSel.length ? query({
+    source: 'cube', filters: { ...f, sub_tipo_recurso: unconvSel },
     groupBy: ['fecha', 'sub_tipo_recurso'],
     measures: [{ as: 'v', col: 'oil_m3', agg: 'sum' }],
-  });
+  }) : [];
   const months2 = [...totByMonth.keys()].sort((a, b) => a - b);
   const bySub = new Map();
   for (const r of subRows) {

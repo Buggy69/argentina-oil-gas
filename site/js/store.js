@@ -25,7 +25,8 @@
    a phone.
    =========================================================================== */
 
-import { asyncBufferFromUrl, parquetRead } from '../vendor/hyparquet.mjs';
+import { asyncBufferFromUrl, cachedAsyncBuffer, parquetRead, parquetMetadataAsync }
+  from '../vendor/hyparquet.mjs';
 import { compressors } from '../vendor/hyparquet-compressors.mjs';
 
 /** Milliseconds in a day — Parquet DATE columns are days since the epoch. */
@@ -160,24 +161,65 @@ export async function loadJSON(url) {
  */
 export async function loadWellHistory(idpozo, years, base = 'data/monthly') {
   const out = [];
-  await Promise.all(years.map(async (year) => {
-    const file = await asyncBufferFromUrl({ url: `${base}/anio=${year}/data.parquet` });
-    await parquetRead({
-      file, compressors, rowFormat: 'object',
-      columns: ['idpozo', 'fecha', 'oil_m3', 'gas_e3m3', 'water_m3'],
-      onComplete: (rows) => {
-        for (const r of rows) {
-          if (Number(r.idpozo) !== idpozo) continue;
-          out.push({
-            month: toMonthIndex(r.fecha),
-            oil: r.oil_m3 == null ? NaN : Number(r.oil_m3),
-            gas: r.gas_e3m3 == null ? NaN : Number(r.gas_e3m3),
-            water: r.water_m3 == null ? NaN : Number(r.water_m3),
-          });
-        }
-      },
-    });
-  }));
+
+  // Sequential, not Promise.all over twenty years. Each file needs several
+  // range requests, and firing all twenty at once produced enough concurrent
+  // requests that some simply failed. Twenty small sequential reads are also
+  // fast enough that the difference is invisible to a user.
+  for (const year of years) {
+    const url = `${base}/anio=${year}/data.parquet`;
+    // cachedAsyncBuffer memoises byte ranges, so the footer fetched for the
+    // metadata is not fetched again when the data pages are read.
+    const file = cachedAsyncBuffer(await asyncBufferFromUrl({ url }));
+    const meta = await parquetMetadataAsync(file);
+
+    // --- row-group pruning -------------------------------------------------
+    // This is the step that makes Tier C viable, and it has to be done
+    // explicitly: reading the file and filtering rows in JavaScript downloads
+    // every byte, which defeats the entire point of sorting by idpozo.
+    //
+    // Parquet's footer carries per-row-group, per-column min/max statistics.
+    // The files are sorted by idpozo, so a given well lives in one or two row
+    // groups and every other group can be excluded from its statistics alone.
+    let rowOffset = 0;
+    const ranges = [];
+    for (const rg of meta.row_groups) {
+      const n = Number(rg.num_rows);
+      const col = rg.columns.find(c =>
+        (c.meta_data?.path_in_schema || []).join('.') === 'idpozo');
+      const st = col?.meta_data?.statistics;
+      // No statistics means "cannot rule it out" — read it rather than risk
+      // silently dropping the well's rows.
+      const lo = st?.min_value ?? st?.min;
+      const hi = st?.max_value ?? st?.max;
+      const overlaps = (lo == null || hi == null)
+        || (idpozo >= Number(lo) && idpozo <= Number(hi));
+      if (overlaps) ranges.push([rowOffset, rowOffset + n]);
+      rowOffset += n;
+    }
+    if (!ranges.length) continue;
+
+    for (const [rowStart, rowEnd] of ranges) {
+      await parquetRead({
+        file, compressors, rowFormat: 'object', rowStart, rowEnd,
+        columns: ['idpozo', 'fecha', 'oil_m3', 'gas_e3m3', 'water_m3'],
+        onComplete: (rows) => {
+          for (const r of rows) {
+            // Still filter: a row group is a coarse unit and contains
+            // neighbouring wells too.
+            if (Number(r.idpozo) !== idpozo) continue;
+            out.push({
+              month: toMonthIndex(r.fecha),
+              oil: r.oil_m3 == null ? NaN : Number(r.oil_m3),
+              gas: r.gas_e3m3 == null ? NaN : Number(r.gas_e3m3),
+              water: r.water_m3 == null ? NaN : Number(r.water_m3),
+            });
+          }
+        },
+      });
+    }
+  }
+
   out.sort((a, b) => a.month - b.month);
   return out;
 }

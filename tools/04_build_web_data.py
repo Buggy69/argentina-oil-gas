@@ -167,8 +167,19 @@ def main() -> int:
                        prod_agua AS water_m3, tef AS effective_hours
                 FROM prod_monthly WHERE anio = {year} ORDER BY idpozo, fecha
             ) TO '{out.as_posix()}'
-            (FORMAT parquet, COMPRESSION zstd, ROW_GROUP_SIZE 50000)
+            (FORMAT parquet, COMPRESSION zstd, ROW_GROUP_SIZE 5000)
         """)
+        # ROW_GROUP_SIZE is the resolution of the pruning, and therefore the
+        # thing that decides what one well costs to read. A row group is the
+        # smallest unit a reader can skip: at 50,000 rows each group is ~300 KB
+        # and opening a single well pulled ~10 MB across the twenty years. At
+        # 5,000 the same query moves a fraction of that.
+        #
+        # The cost is a larger footer (more groups to describe) and slightly
+        # worse compression (less data per group for the encoder to exploit).
+        # Both are measured in the size budget below — this is a deliberate
+        # trade of a little total size for a large drop in per-query bytes,
+        # which is the right way round when the file is read over HTTP.
         tier_c[str(year)] = {"bytes": out.stat().st_size,
                              "sha256": sha256(out)}
 

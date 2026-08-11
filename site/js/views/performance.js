@@ -237,8 +237,21 @@ export function update(root, ctx) {
     const id = Number(tr.dataset.idpozo);
     const el = root.querySelector('#pf-well');
     el.classList.add('is-busy');
-    const { loadWellHistory, monthLabel } = await import('../store.js');
-    const hist = await loadWellHistory(id, ctx.years);
+    const { loadWellHistory, monthLabel, monthYear } = await import('../store.js');
+
+    // Only fetch the years this well actually produced in. wells_slim already
+    // holds its first and last producing month, so a well with a two-year life
+    // costs two file reads instead of twenty — the cheapest possible filter is
+    // the one that never issues the request.
+    const rowIdx = idx.find(i => valueAt(wells, 'idpozo', i) === id);
+    const fp = wells.cols.first_prod_month?.values[rowIdx];
+    const lp = wells.cols.last_prod_month?.values[rowIdx];
+    const years = (Number.isFinite(fp) && Number.isFinite(lp))
+      ? Array.from({ length: monthYear(lp) - monthYear(fp) + 1 },
+                   (_, k) => monthYear(fp) + k).filter(y => ctx.years.includes(y))
+      : ctx.years;
+
+    const hist = await loadWellHistory(id, years);
     el.classList.remove('is-busy');
     const s1 = palette()[0];
     draw(el, merge(baseOption(), {

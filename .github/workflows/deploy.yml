@@ -1,0 +1,67 @@
+# Publish site/ to GitHub Pages on every push to main.
+#
+# WHY A WORKFLOW AND NOT THE "DEPLOY FROM A BRANCH" SETTING
+# ---------------------------------------------------------
+# Pages' branch-deploy mode can only serve the repository root or a folder
+# called /docs. Our site lives in /site, and /docs holds the written reports —
+# renaming either to suit the setting would be letting the tool dictate the
+# layout. The Actions deployment can publish any directory, so it does.
+#
+# It also means the published artifact is exactly the directory the build wrote,
+# with nothing else from the repository tagging along: the raw pipeline, the
+# verification reports and the notebooks stay in the repo but are never served.
+
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    # Only rebuild when something that is actually served changes. A commit that
+    # touches only tools/ or docs/ does not need a deployment.
+    paths:
+      - 'site/**'
+      - '.github/workflows/deploy.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Never let two deployments race. `cancel-in-progress: false` because a
+# half-finished deploy that gets cancelled can leave Pages serving a partial
+# upload; waiting is cheaper than that.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Sanity-check what is about to be published
+        # Cheap guards against the two failures that are invisible until a user
+        # hits them: a missing .nojekyll (Jekyll silently refuses to serve the
+        # anio=YYYY directories, 404-ing the entire deep-dive tier), and a
+        # vendored module still pointing at a CDN path that will not resolve
+        # from our own origin.
+        run: |
+          test -f site/.nojekyll || { echo "::error::site/.nojekyll is missing — Jekyll will drop every anio=YYYY path"; exit 1; }
+          test -f site/data/summary.json || { echo "::error::site/data is not built"; exit 1; }
+          if grep -rq '"/npm/' site/vendor/; then
+            echo "::error::a vendored module still imports an absolute /npm/ path"
+            exit 1
+          fi
+          echo "publishing $(du -sh site | cut -f1) across $(find site -type f | wc -l) files"
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: deployment
+        uses: actions/deploy-pages@v4

@@ -70,10 +70,15 @@ has finished loading:
 | B | `agg_monthly.parquet` | 4.5 MB | 296,154-row cube — every facet filter and chart |
 | B | `wells_slim.parquet` | 3.1 MB | one row per well — map, statistics |
 | B | `typecurve.parquet` | 0.3 MB | pre-computed P10/P50/P90 decline curves |
-| C | `monthly/anio=YYYY/` | 97 MB | full history, read by HTTP **range request** only when you open a single well |
+| C | `monthly/anio=YYYY/` | 105 MB | full history, read by HTTP **range request** only when you open a single well |
 
-Tier C works because the files are sorted by `idpozo`, so Parquet's per-row-group
-statistics let the browser fetch a few hundred kilobytes instead of 97 MB.
+Tier C works because the files are sorted by `idpozo` and written in 5,000-row
+groups, so Parquet's per-row-group statistics let the browser skip almost
+everything. Measured on the largest horizontal well in the dataset — 24 months
+across 2 year-files — opening its full history transfers **1.2 MB in 14
+requests, 1.1% of the tier, in 219 ms**. Before the row groups were made finer
+and the year range narrowed to the well's actual life, the same query moved
+10.4 MB in 55 requests.
 
 **Zero external hosts at runtime.** The Parquet reader (hyparquet, 58 KB) and the
 chart library are vendored into `site/vendor/`. No CDN, no fonts, no map tiles,

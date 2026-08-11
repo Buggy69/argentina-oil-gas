@@ -1,5 +1,5 @@
 {
-  "generated": "2026-08-10T20:40:20+00:00",
+  "generated": "2026-08-11T12:15:25+00:00",
   "snapshot": "2026-08-10",
   "petrodb": {
     "driver": "local_parquet",
@@ -158,102 +158,102 @@
   "outputs": {
     "summary.json": {
       "bytes": 245994,
-      "sha256": "557a2a1745e78ddcba4e94fbeb2337e85ff13b8b1b2726df2d6b1e85cb3b7687"
+      "sha256": "abc265f99415bddbf36021621c00d1bce4f7ee4f03aa78daa5a40b44c363e723"
     },
     "agg_monthly.parquet": {
-      "bytes": 4692541,
+      "bytes": 4690132,
       "rows": 296154,
-      "sha256": "99ab358ce5076855bffea78fc7cc367302c2ba22a26a6ee06843dc0daf88afb9"
+      "sha256": "b330d4e63049e7c923abb29c3c7d4a2ac3ebafe8d6d7ba8039e70083a5d48b45"
     },
     "wells_slim.parquet": {
       "bytes": 3287786,
       "sha256": "6b1de4168d5f8eeedda81fe398194758753bc445bcd54e6197511005f4b88b71"
     },
     "typecurve.parquet": {
-      "bytes": 294564,
+      "bytes": 294553,
       "rows": 17876,
-      "sha256": "83cc2777a01a7d31761d4a8fb6e569867116c1a55c3dba996d058eea74c83348"
+      "sha256": "1a2cab859543340e0e56d8793303b57e7207b77c9868bee301cf7003abe538f8"
     },
     "monthly": {
       "2006": {
-        "bytes": 3949957,
-        "sha256": "042545b4759ace790459513c9e30e67cb97d69a5ffa4ae0301877dfe5e77098f"
+        "bytes": 4249869,
+        "sha256": "eaa449bf1199a2e12f87ba1eb3e7c662097c63293679213ddeeff3e81b145d72"
       },
       "2007": {
-        "bytes": 4042170,
-        "sha256": "1bd84e2d2935ced02d9ce0f29e212869d7131daa4f16fa56ac65e4469f90a7f0"
+        "bytes": 4370444,
+        "sha256": "4f51dcfe5fe76f45127eee7119f564b059d4bc64581e7f4307f375e2e90b3b62"
       },
       "2008": {
-        "bytes": 4301429,
-        "sha256": "ed28af768b0bfdb8d0bc8b4e2406efbeb7e95bad0debceb3c4466c07b78f144c"
+        "bytes": 4618486,
+        "sha256": "8e43ca794c6ae4f3c19062353acb43e250a2a0e8278f93a96ab940c833fc9560"
       },
       "2009": {
-        "bytes": 4456186,
-        "sha256": "b325ed6c6b9a58de0f3409066224139fd205e6fb05e5cebdd0b9f77b45520221"
+        "bytes": 4780914,
+        "sha256": "7db7b1c0d1943beb7abc91492abc83099adcddbf42d7aff8d1b887d4952f0abb"
       },
       "2010": {
-        "bytes": 4577762,
-        "sha256": "86c649a2d083acba468462c3badb17d6c00165e2407a2a61063de1847e180eee"
+        "bytes": 4890991,
+        "sha256": "2c0a2bcbb1ea3d582fb8a45ecdd2b7b8569558ffbe0676a6b12a464969251374"
       },
       "2011": {
-        "bytes": 4580569,
-        "sha256": "d7ba493237042e072f948e101b6adab022054d768de9060955bd6f5379bcdf13"
+        "bytes": 4970101,
+        "sha256": "648478f90e71d253289f957b32b925ab74690b78f15329cdb112f3b9b68e9480"
       },
       "2012": {
-        "bytes": 4717696,
-        "sha256": "0266c10b5f3e5dfa636f9ed3bdcd0531b30edb6965845a9eeb9a8f36feaa4e7b"
+        "bytes": 5143492,
+        "sha256": "7ce0141dbb5ce7994085e32f57655931ff8622b8d5ece77eb8f1a4dc94f6c50a"
       },
       "2013": {
-        "bytes": 4978271,
-        "sha256": "d8cb5d0520f1fb4d36a2c5745e4a40125368503eebc4d3c5ea0f68c475502b09"
+        "bytes": 5420885,
+        "sha256": "6d76fca321f57e27ec3ec379f4a59d81657cec822c9a17d12384aeabb7858456"
       },
       "2014": {
-        "bytes": 5191237,
-        "sha256": "559a032b472171721614cbb69038c2f7a3d8f8f815f64213cedff3bbdd656d47"
+        "bytes": 5560736,
+        "sha256": "c5f2b1402aaed2381c42b0ff405550dcf6b0a9525fee7ad4dae5b9a3a3743f50"
       },
       "2015": {
-        "bytes": 5346859,
-        "sha256": "0834012e9e5c34400300fd21db57521922040edcaef9038cfd28116b06a7e536"
+        "bytes": 5735212,
+        "sha256": "e0d5cdf8243962aad6af04d22b94b90404dcc5126f39f1f9f0489b8982285185"
       },
       "2016": {
-        "bytes": 5545420,
-        "sha256": "6aa949ef3a51263062a732dc0aae244d95a7ac51376c060d39dc2baa9483e530"
+        "bytes": 5982755,
+        "sha256": "83eb638ee9c595cdd3a8a920a71b93dd6fd497a11a79116a11df323c3022ef73"
       },
       "2017": {
-        "bytes": 5518635,
-        "sha256": "65a651a6a93fcda7c981afe8ed48209455d5736ad03eb9a78c9ab4ab6877a863"
+        "bytes": 5994205,
+        "sha256": "0f319435d43221bb7433b053053e0db7f9e3889d63e661a2742daabc75c325be"
       },
       "2018": {
-        "bytes": 5507402,
-        "sha256": "a09de22bad7bc78bc7066bbafc725b9a1235819c10b46c586caacf7565ea696a"
+        "bytes": 5941311,
+        "sha256": "1d1d7a2d1c5ada63d3b37d474961ea0f1311e7d55b38a82280204da2c3f7b1b9"
       },
       "2019": {
-        "bytes": 5598742,
-        "sha256": "2318f115cfc1361d89c1e99a912303fe2e13f8412bfe7ce6a660e49e159036dc"
+        "bytes": 6058506,
+        "sha256": "cdd4e15fd0a9c6503f1c64380f33e398c95c221667cb9e39d2cfd838d969193d"
       },
       "2020": {
-        "bytes": 5553192,
-        "sha256": "267ecb5590753e545facb8954dc59898b07cdfd941069c9c68466defda8b1133"
+        "bytes": 5944358,
+        "sha256": "6eaf1a0e8d6a3f3abe1e0b786678d54a7d30caf214e19a67aabb8d53d4e64b5a"
       },
       "2021": {
-        "bytes": 5560823,
-        "sha256": "6efc7dcadb9df0b7eda3ebd2b7d88d12be6085596cc342636b67f5b5343a56b4"
+        "bytes": 5984663,
+        "sha256": "d37a62cbe9762c621285fb6578ce5cb604bbe5dffbabd5a93c6831183816b815"
       },
       "2022": {
-        "bytes": 5596503,
-        "sha256": "391d816105bc5666c61210e9a26766b838bf3c1529bad2ef2e98197e83929eff"
+        "bytes": 6032729,
+        "sha256": "f1ec9efb0767dde71d4b08a4ebc7e12f97c1736332872b6bab52c04455abde0c"
       },
       "2023": {
-        "bytes": 5557025,
-        "sha256": "e223022b2b148c6b30c17d29d2a291243fe6196528cf153cc492d94636638b54"
+        "bytes": 6044163,
+        "sha256": "57c3f9d3dec75fcb18f2512bb296c7fd40ec4962aae2d2f51c36d47a793019a9"
       },
       "2024": {
-        "bytes": 5634612,
-        "sha256": "51e37ac3cfc6e4f3d3cc916bce7db9126fa763e1b0401ffebeb9ec3eb30e1a24"
+        "bytes": 6154181,
+        "sha256": "cdc6bdcc2d1129583a211a3c0b763ad102821efd00e65f3c81850f4db028120c"
       },
       "2025": {
-        "bytes": 5631918,
-        "sha256": "69ee09ec86ed405e149b176fd5379d8fe29c7caa38f5f38271c9489930536cb9"
+        "bytes": 6119181,
+        "sha256": "f2308055df28a339e01007a437ce425eb4eb74384f4258c6902627cf0a5f2bed"
       }
     }
   },

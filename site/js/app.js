@@ -259,6 +259,9 @@ async function boot() {
       sub_tipo_recurso: 'cat', operator: 'cat', well_fluid: 'cat',
       well_state: 'cat', trajectory: 'cat', completion_type: 'cat',
       lon: 'num', lat: 'num', depth_m: 'num', producing_months: 'num',
+      // Month indices, used to fetch only the years a well actually produced in
+      // when its full history is opened.
+      first_prod_month: 'date', last_prod_month: 'date',
       cum_oil_m3: 'num', cum_gas_e3m3: 'num', cum_water_m3: 'num',
       lateral_m: 'num', stages: 'num', proppant_t: 'num',
       proppant_kg_per_m: 'num', stage_spacing_m: 'num', gor_m3_m3: 'num',
