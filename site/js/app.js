@@ -241,6 +241,27 @@ async function boot() {
   document.getElementById('coverage').textContent =
     `${ym(ctx.summary.coverage.first_month)} – ${ym(ctx.summary.coverage.last_month)}`;
 
+  /* TIER A FAST PATH.
+     Paint a complete Overview from the 40 KB summary before a single byte of
+     Parquet has arrived. Everything below this point is an upgrade of a page
+     the reader can already use, rather than a wait they have to sit through. */
+  if ((VIEWS[state.view] ? state.view : 'overview') === 'overview') {
+    try {
+      const ov = await import('./views/overview.js');
+      const main = document.getElementById('main');
+      main.innerHTML = '';
+      const root = document.createElement('div');
+      main.appendChild(root);
+      current = { name: 'overview', module: ov, root };
+      ov.renderFromSummary(root, ctx);
+      refreshUnitLabels();
+    } catch (e) {
+      // The fast path is an optimisation; if it fails the full render still
+      // runs a moment later, so never let it break the boot.
+      console.warn('fast path skipped:', e);
+    }
+  }
+
   say('production cube (4.5 MB)');
   const [cube, wells, typecurve, provenance] = await Promise.all([
     loadTable('data/agg_monthly.parquet', {

@@ -12,7 +12,90 @@ import { draw, baseOption, merge, areaSeries, lineSeries, makeScale, legendHTML 
   from '../charts.js';
 import { monthLabel } from '../store.js';
 
-export function render(root, ctx) {
+/**
+ * TIER A FAST PATH — draw the whole Overview from summary.json alone.
+ *
+ * This is the point of having a Tier A at all. summary.json is ~40 KB gzipped
+ * and needs no query engine, so it can paint a complete, correct overview while
+ * the 8 MB of Parquet is still in flight. When the tables land, `update()` runs
+ * over the same DOM and the view becomes interactive — no layout jump, because
+ * the structure is identical.
+ *
+ * Without this the page shows "Loading data…" until every byte has arrived,
+ * which measured 11.8 s to first contentful paint on the deployed site.
+ */
+export function renderFromSummary(root, ctx) {
+  const s = ctx.summary;
+  const kpi = s.kpi || {};
+  render(root, ctx, /* skipUpdate */ true);
+
+  const tot = { oil: kpi.cum_oil_m3 || 0, gas: kpi.cum_gas_e3m3 || 0 };
+  const unconvOil = (s.unconventional_monthly || [])
+    .filter(r => r.subtype === 'SHALE' || r.subtype === 'TIGHT')
+    .reduce((a, r) => a + (r.oil_m3 || 0), 0);
+
+  root.querySelector('#ov-tiles').innerHTML = [
+    ['Wells in selection', num(kpi.wells), 'idpozo = wellbore × producing formation'],
+    [`Cumulative oil (${units.oil()})`, compact(convert.oil(tot.oil), 2),
+     'sum over the selected months'],
+    [`Cumulative gas (${units.gas()})`, compact(convert.gas(tot.gas), 2),
+     'sum over the selected months'],
+    ['Unconventional oil', pct(tot.oil ? unconvOil / tot.oil * 100 : 0),
+     `${num(kpi.wells_horizontal)} horizontal wells identified`],
+  ].map(([label, value, sub]) => `
+    <div class="tile"><div class="label">${label}</div>
+      <div class="value">${value}</div><div class="sub">${sub}</div></div>`).join('');
+
+  // Basin series, straight from the summary's pre-aggregated rows.
+  const months = [...new Set((s.basin_monthly || []).map(r => r.ym))].sort();
+  const scale = makeScale(ctx.basins && ctx.basins.length ? ctx.basins
+    : [...new Set((s.basin_monthly || []).map(r => r.cuenca))]);
+
+  for (const [id, key, conv, unit] of [
+    ['ov-oil', 'oil_m3', convert.oil, units.oil()],
+    ['ov-gas', 'gas_e3m3', convert.gas, units.gas()],
+  ]) {
+    const byBasin = new Map();
+    for (const r of s.basin_monthly || []) {
+      if (!byBasin.has(r.cuenca)) byBasin.set(r.cuenca, new Map());
+      byBasin.get(r.cuenca).set(r.ym, r[key]);
+    }
+    const shown = [...byBasin.entries()]
+      .map(([k, m]) => [k, [...m.values()].reduce((a, b) => a + (b || 0), 0)])
+      .sort((a, b) => b[1] - a[1]).slice(0, 6).map(([k]) => k);
+    draw(root.querySelector('#' + id), merge(baseOption(), {
+      legend: { show: false }, grid: { bottom: 12 },
+      tooltip: { valueFormatter: v => compact(v, 1) + ' ' + unit },
+      xAxis: { type: 'category', data: months,
+               axisLabel: { interval: Math.ceil(months.length / 8) } },
+      yAxis: { type: 'value', axisLabel: { formatter: v => compact(v, 0) } },
+      series: shown.map(b => areaSeries(
+        b, months.map(m => conv(byBasin.get(b).get(m) || 0)), scale(b))),
+    }));
+    root.querySelector('#' + id + '-legend').innerHTML =
+      legendHTML(shown.map(b => ({ label: b, color: scale(b) })));
+  }
+
+  // The operator ranking needs the cube; say so rather than leaving an empty
+  // card that reads as a broken chart.
+  const ops = root.querySelector('#ov-ops');
+  if (ops) ops.innerHTML =
+    '<p class="note" style="padding:28px 0;text-align:center">' +
+    'Loading the full dataset…</p>';
+
+  const nat = s.national_monthly || [];
+  draw(root.querySelector('#ov-wells'), merge(baseOption(), {
+    legend: { show: false }, grid: { bottom: 12 },
+    tooltip: { valueFormatter: v => num(v) + ' wells' },
+    xAxis: { type: 'category', data: nat.map(r => r.ym),
+             axisLabel: { interval: Math.ceil(nat.length / 8) } },
+    yAxis: { type: 'value', axisLabel: { formatter: v => compact(v, 0) } },
+    series: [lineSeries('Producing wells', nat.map(r => r.wells_producing),
+      getComputedStyle(document.documentElement).getPropertyValue('--s1').trim())],
+  }));
+}
+
+export function render(root, ctx, skipUpdate = false) {
   root.innerHTML = `
     <div class="tiles" id="ov-tiles"></div>
     <div class="grid" style="margin-top:16px">
@@ -54,7 +137,7 @@ export function render(root, ctx) {
       </section>
     </div>`;
 
-  update(root, ctx);
+  if (!skipUpdate) update(root, ctx);
 }
 
 export function update(root, ctx) {
