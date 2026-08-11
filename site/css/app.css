@@ -215,6 +215,10 @@ table.data th { color: var(--ink-2); font-weight: 600; position: sticky; top: 0;
   font-size: 12px; color: var(--ink-2); border-top: 1px solid var(--hairline); }
 .sitefoot p { margin: 0 0 8px; }
 .muted { color: var(--ink-muted); }
+/* The byline sits below the licence text but is not muted — attribution for the
+   work is a different thing from the small print around it. */
+.byline { color: var(--ink-2); padding-top: 10px; border-top: 1px solid var(--hairline); }
+.byline strong { color: var(--ink-1); }
 
 .prose { font-size: 14px; line-height: 1.65; max-width: 74ch; }
 .prose h3 { font-size: 14px; margin: 22px 0 6px; }

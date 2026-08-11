@@ -58,6 +58,18 @@ export async function render(root, ctx) {
         </div>
         <p>Both publishers release under CC BY 4.0, which permits this reuse
         with attribution. Neither has reviewed or endorsed this site.</p>
+
+        <h3>Who built this</h3>
+        <p>Built by <strong>Maximilian Haas</strong> — the data pipeline,
+        verification suite and this dashboard. The analysis, the derived
+        quantities (well trajectory, completion intensity, type curves) and any
+        errors in them are mine; the underlying measurements are the
+        publishers', cited above.</p>
+        <p>The complete source — ingest, the verification suite that reconciles
+        against the publisher's own figures, and the site itself — is at
+        <a href="https://github.com/Buggy69/argentina-oil-gas" rel="noopener">github.com/Buggy69/argentina-oil-gas</a>,
+        MIT licensed. Anyone can rebuild every number on this site from the raw
+        sources.</p>
       </div>
     </section>
 
