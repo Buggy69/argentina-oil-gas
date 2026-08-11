@@ -6,21 +6,33 @@ THE SIZING PROBLEM
 shows pre-chosen slices is not analysis. The resolution is three tiers with
 different jobs:
 
-  A  summary.json      ~100 KB, no engine needed. First paint is instant.
+  A  summary.json      ~40 KB gzipped, no engine needed. Renders the entire
+                       Overview before any Parquet has arrived.
   B  agg_monthly       a pre-aggregated cube over the dimensions people filter
-     wells_slim        by, plus every well as a row. Loaded into DuckDB-WASM at
-                       start; all facet filtering and statistics run on these.
-  C  monthly/anio=*    the full well-month history, one file per year, sorted by
-                       idpozo. Never loaded whole — fetched by HTTP range
-                       request when the user drills into individual wells.
+     wells_slim        by, one row per well, and pre-computed type curves.
+     typecurve         Decoded into typed arrays at start-up; all facet
+                       filtering and statistics run on these.
+  C  wells/bucket=N    the full well-month history, sharded by well id. One
+                       small whole file is fetched when a well is opened.
 
-WHY TIER C WORKS OVER HTTP
---------------------------
-Parquet stores min/max statistics per row group in its footer. Sorting by
-idpozo means a given well's rows live in one or two row groups, so DuckDB reads
-the footer, finds the byte ranges it needs, and issues Range requests for those
-alone. Sorting is not cosmetic here — it is the entire reason a browser can
-query 17.8 M rows without downloading them.
+TWO THINGS THE HOST DECIDED FOR US
+----------------------------------
+1. **No range requests.** The natural Tier C layout is one file per year sorted
+   by idpozo, pulled apart with HTTP range requests guided by Parquet's
+   row-group statistics. GitHub Pages gzips this content type and then applies
+   Range to the COMPRESSED stream, so the offsets address the wrong bytes and
+   the footer check fails outright. Sharding by well makes each drill-down an
+   ordinary whole-file GET, which compression cannot corrupt.
+
+2. **ZSTD everywhere, after measuring the alternative.** Tier B decoding costs
+   several seconds of main-thread time while the download itself lands in under
+   a second, so the obvious move was to trade size for a faster decompressor.
+   Snappy was tried and measured: it cut decode by only ~8% (6.15 s -> 5.64 s)
+   while adding 2.5 MB to the download. The decompressor was not the bottleneck,
+   so the change was reverted. The dominant cost is decoding the categorical
+   columns themselves, and the mitigation that actually works is Tier A --
+   rendering the whole Overview from a 40 KB JSON at ~0.5 s, long before any of
+   this finishes.
 
 Run:  python tools/04_build_web_data.py
 """

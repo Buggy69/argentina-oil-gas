@@ -29,7 +29,7 @@
 // (asyncBufferFromUrl, cachedAsyncBuffer, parquetMetadataAsync) were dropped
 // with the year-sharded layout — see fetchBuffer below for why ranges are not
 // usable on this host.
-import { parquetRead } from '../vendor/hyparquet.mjs';
+import { parquetRead, parquetMetadata } from '../vendor/hyparquet.mjs';
 import { compressors } from '../vendor/hyparquet-compressors.mjs';
 
 /** Milliseconds in a day — Parquet DATE columns are days since the epoch. */
@@ -44,8 +44,38 @@ const DAY_MS = 86400000;
  * a month is ever needed.
  */
 export const EPOCH_YEAR = 2006;
+
+/**
+ * Days-since-epoch to (year, month) with integer arithmetic only.
+ *
+ * The obvious `new Date(days * 86400000)` allocates an object per value, and
+ * these columns have hundreds of thousands of values — 466 k across the cube
+ * and the wells table, which measured as a large share of load time. This is
+ * Howard Hinnant's civil-from-days algorithm: it shifts the epoch to 0000-03-01
+ * so that the leap-day irregularity falls at the END of the year, which makes
+ * the month a closed-form expression instead of a table lookup.
+ */
+function civilFromDays(z) {
+  z += 719468;                                   // 1970-01-01 -> 0000-03-01 era
+  const era = Math.floor(z / 146097);            // 146097 days = 400 years exactly
+  const doe = z - era * 146097;                  // day of era, 0..146096
+  const yoe = Math.floor(
+    (doe - Math.floor(doe / 1460) + Math.floor(doe / 36524) - Math.floor(doe / 146096)) / 365);
+  const y = yoe + era * 400;
+  const doy = doe - (365 * yoe + Math.floor(yoe / 4) - Math.floor(yoe / 100));
+  const mp = Math.floor((5 * doy + 2) / 153);    // month index in the March-based year
+  const m = mp + (mp < 10 ? 3 : -9);             // back to Jan=1
+  return [y + (m <= 2 ? 1 : 0), m];
+}
+
 function toMonthIndex(v) {
   if (v == null) return -1;
+  if (typeof v === 'number') {
+    const [y, m] = civilFromDays(v);
+    return (y - EPOCH_YEAR) * 12 + (m - 1);
+  }
+  // hyparquet hands back a Date for some encodings; honour it rather than
+  // guessing at the underlying representation.
   const d = v instanceof Date ? v : new Date(v * DAY_MS);
   return (d.getUTCFullYear() - EPOCH_YEAR) * 12 + d.getUTCMonth();
 }
@@ -123,55 +153,67 @@ export async function loadTable(url, spec, onProgress) {
   const names = Object.keys(spec);
   const file = await fetchBuffer(url);
 
-  // One read for all requested columns, delivered as arrays-of-values per row.
-  // We transpose immediately and never retain the row arrays, so the peak
-  // allocation is one row-group's worth rather than the whole table's.
-  let n = 0;
+  // Row count up front, straight from the footer, so every column array can be
+  // allocated once at full size instead of grown.
+  const meta = parquetMetadata(file);
+  const n = Number(meta.num_rows);
+
   const cols = {};
   for (const name of names) {
     cols[name] = spec[name] === 'cat'
-      ? { kind: 'cat', codes: null, dict: [], index: new Map() }
-      : { kind: spec[name], values: null };
+      ? { kind: 'cat', codes: new Int32Array(n), dict: [], index: new Map() }
+      : { kind: spec[name],
+          values: spec[name] === 'date' ? new Int32Array(n) : new Float64Array(n) };
   }
 
+  /* COLUMN CHUNKS, NOT ROWS.
+   *
+   * The first version asked for rowFormat:'array' and transposed in
+   * onComplete. That is correct and it allocates one JavaScript array per row —
+   * 296,154 of them for the cube, plus 85,417 for the wells table — which
+   * measured 8.6 seconds of decoding before the page became usable.
+   *
+   * onChunk hands over one column's values for a slice of rows, which is how
+   * the data is laid out on disk anyway. Values go straight into the
+   * pre-allocated typed array at their row offset; no per-row object is ever
+   * created, and the garbage collector has nothing to do. */
   await parquetRead({
-    file, compressors, columns: names, rowFormat: 'array',
-    onComplete: (rows) => {
-      n = rows.length;
-      for (let c = 0; c < names.length; c++) {
-        const name = names[c], kind = spec[name], col = cols[name];
-        if (kind === 'cat') {
-          const codes = new Int32Array(n);
-          for (let i = 0; i < n; i++) {
-            const v = rows[i][c];
-            if (v == null) { codes[i] = -1; continue; }
-            const s = String(v);
-            let k = col.index.get(s);
-            if (k === undefined) { k = col.dict.length; col.dict.push(s); col.index.set(s, k); }
-            codes[i] = k;
-          }
-          col.codes = codes;
-        } else if (kind === 'date') {
-          const out = new Int32Array(n);
-          for (let i = 0; i < n; i++) out[i] = toMonthIndex(rows[i][c]);
-          col.values = out;
-        } else {
-          const out = new Float64Array(n);
-          // NaN is the null marker for numbers: it propagates correctly through
-          // arithmetic and is skipped by every aggregate here, whereas 0 would
-          // silently become a real measurement.
-          for (let i = 0; i < n; i++) {
-            const v = rows[i][c];
-            out[i] = (v == null) ? NaN : Number(v);
-          }
-          col.values = out;
+    file, compressors, columns: names,
+    onChunk: (chunk) => {
+      const col = cols[chunk.columnName];
+      if (!col) return;                       // a column we did not ask for
+      const data = chunk.columnData;
+      const start = Number(chunk.rowStart);
+      const kind = col.kind;
+
+      if (kind === 'cat') {
+        const { codes, dict, index } = col;
+        for (let i = 0; i < data.length; i++) {
+          const v = data[i];
+          if (v == null) { codes[start + i] = -1; continue; }
+          const s = String(v);
+          let k = index.get(s);
+          if (k === undefined) { k = dict.length; dict.push(s); index.set(s, k); }
+          codes[start + i] = k;
+        }
+      } else if (kind === 'date') {
+        const out = col.values;
+        for (let i = 0; i < data.length; i++) out[start + i] = toMonthIndex(data[i]);
+      } else {
+        const out = col.values;
+        // NaN is the null marker for numbers: it propagates correctly through
+        // arithmetic and is skipped by every aggregate here, whereas 0 would
+        // silently become a real measurement.
+        for (let i = 0; i < data.length; i++) {
+          const v = data[i];
+          out[start + i] = (v == null) ? NaN : Number(v);
         }
       }
-      if (onProgress) onProgress(n);
     },
   });
 
   for (const name of names) if (cols[name].kind === 'cat') delete cols[name].index;
+  if (onProgress) onProgress(n);
   return new Table(n, cols);
 }
 
