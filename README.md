@@ -4,13 +4,32 @@ An interactive analysis of Argentina's public well-level oil and gas production
 data, 2006–2025. Static site, no server, no accounts, no tracking. Open it on a
 phone or a laptop and slice 17.8 million well-months yourself.
 
-**Data** · Secretaría de Energía de la Nación (Argentina), *Producción de
-petróleo y gas por pozo (Capítulo IV)* and *Datos de fractura de pozos
-(Adjunto IV)*, [datos.energia.gob.ar](https://datos.energia.gob.ar/) — CC BY 4.0.
-Repackaged as Parquet by [PetroData Repository](https://sumpalabs.com/petrodb/)
-(`sumpalabs/petrodb`, curated by Oscar Cortez) — CC BY 4.0.
+## This is public data
 
-Independent and non-commercial. Neither publisher has reviewed or endorsed it.
+**Every figure on this site comes from public open-government data.** Argentina's
+*Secretaría de Energía* requires operators to declare production well by well and
+month by month, and publishes those declarations openly under a Creative Commons
+Attribution licence. Nothing here is proprietary, confidential or commercially
+sourced, and nothing is company-internal. Anyone can download the same files and
+reproduce every number.
+
+**Cite as:**
+
+> Secretaría de Energía de la Nación (Argentina). *Producción de petróleo y gas
+> por pozo (Capítulo IV)* and *Datos de fractura de pozos de hidrocarburos
+> (Adjunto IV)*. [datos.energia.gob.ar](https://datos.energia.gob.ar/).
+> Licensed **CC BY 4.0**. Accessed 2026-08-10.
+>
+> *PetroData Repository* (`sumpalabs/petrodb`), curated by Oscar Cortez —
+> Parquet repackaging of the above. [sumpalabs.com/petrodb](https://sumpalabs.com/petrodb/).
+> Licensed **CC BY 4.0**. Snapshot 2026-08-10.
+
+Attribution travels with the data: it is in the page footer, on the Data & method
+page, in `CITATION.cff`, in `site/PROVENANCE.json` with a checksum for every
+file, and in the header of every CSV a user exports.
+
+This analysis is independent and non-commercial. Neither publisher has reviewed
+or endorsed it.
 
 ## What is in the data
 

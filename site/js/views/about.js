@@ -29,6 +29,16 @@ export async function render(root, ctx) {
     <section class="card">
       <h2>What this is</h2>
       <div class="prose">
+        <div class="callout">
+          <strong>Everything here is public open-government data.</strong>
+          Argentina's <em>Secretaría de Energía</em> requires operators to declare
+          production well by well, month by month, and publishes those
+          declarations openly under a Creative Commons Attribution licence. This
+          site reuses that published data with attribution and adds nothing
+          proprietary, confidential or commercially licensed to it. Anyone can
+          download the same source files from the links below and reproduce every
+          number on this site.
+        </div>
         <p>An independent, non-commercial analysis of Argentina's public
         well-level oil and gas production data, covering
         <strong>${esc(String(cov.first_month ?? '').slice(0, 7))} to
