@@ -55,6 +55,8 @@ export function renderFromSummary(root, ctx) {
   for (const [id, key, conv, unit] of [
     ['ov-oil', 'oil_m3', convert.oil, units.oil()],
     ['ov-gas', 'gas_e3m3', convert.gas, units.gas()],
+    // No water on the fast path: summary.json carries oil and gas per basin
+    // only, and the water chart fills in when the cube lands a moment later.
   ]) {
     const byBasin = new Map();
     for (const r of s.basin_monthly || []) {
@@ -116,6 +118,17 @@ export function render(root, ctx, skipUpdate = false) {
         <div id="ov-gas-legend"></div>
         <p class="source">Source: Secretaría de Energía (Capítulo IV) via petrodb · CC BY 4.0</p>
       </section>
+      <section class="card half">
+        <h2>Produced water by basin</h2>
+        <p class="note">Monthly, stacked. Unit: <span data-unit="water"></span>.
+           Argentina produces roughly ten times as much water as oil — 6.9 billion
+           m³ against 674 million — so it belongs on the first screen, not in a
+           footnote.</p>
+        <div id="ov-water" class="chart"></div>
+        <div id="ov-water-legend"></div>
+        <p class="source">Source: Secretaría de Energía (Capítulo IV) via petrodb · CC BY 4.0</p>
+      </section>
+
       <section class="card half">
         <h2>Unconventional share of oil production</h2>
         <p class="note">Shale and tight as a percentage of total monthly oil.</p>
@@ -202,6 +215,7 @@ export function update(root, ctx) {
   for (const [id, measure, conv, unit] of [
     ['ov-oil', 'oil_m3', convert.oil, units.oil()],
     ['ov-gas', 'gas_e3m3', convert.gas, units.gas()],
+    ['ov-water', 'water_m3', convert.water, units.water()],
   ]) {
     const rows = query({
       source: 'cube', filters: f, groupBy: ['fecha', 'cuenca'],

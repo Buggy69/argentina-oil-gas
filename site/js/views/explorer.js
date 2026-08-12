@@ -54,6 +54,7 @@ function pickSource(dim, filters) {
 
 let dim = 'cuenca';
 let stacked = true;
+let tblSort = 'oil', tblDir = 'desc';
 
 export function render(root, ctx) {
   root.innerHTML = `
@@ -75,7 +76,7 @@ export function render(root, ctx) {
         </div>
       </section>
 
-      <section class="card half">
+      <section class="card third">
         <h2>Oil — monthly</h2>
         <p class="note">Unit: <span data-unit="oil"></span>. Top 8 categories;
            the remainder is folded into “Other” rather than given a ninth colour.</p>
@@ -83,12 +84,21 @@ export function render(root, ctx) {
         <div id="ex-oil-legend"></div>
       </section>
 
-      <section class="card half">
+      <section class="card third">
         <h2>Gas — monthly</h2>
         <p class="note">Unit: <span data-unit="gas"></span>. Separate chart, one
            axis — never a second y-scale.</p>
         <div id="ex-gas" class="chart"></div>
         <div id="ex-gas-legend"></div>
+      </section>
+
+      <section class="card third">
+        <h2>Water — monthly</h2>
+        <p class="note">Produced water, unit: <span data-unit="water"></span>.
+           Argentina produces about ten times as much water as oil, so it gets a
+           chart rather than a table column.</p>
+        <div id="ex-water" class="chart"></div>
+        <div id="ex-water-legend"></div>
       </section>
 
       <section class="card">
@@ -117,6 +127,14 @@ export function render(root, ctx) {
     stacked = false; syncButtons(root); update(root, ctx);
   });
   root.querySelector('#ex-csv').addEventListener('click', () => exportCSV());
+  // Sortable breakdown: click a header to sort by it, click again to reverse.
+  root.querySelector('#ex-table').addEventListener('click', (e) => {
+    const k = e.target.closest('th[data-sort]')?.dataset.sort;
+    if (!k) return;
+    if (tblSort === k) tblDir = tblDir === 'desc' ? 'asc' : 'desc';
+    else { tblSort = k; tblDir = 'desc'; }
+    update(root, ctx);
+  });
 
   update(root, ctx);
 }
@@ -172,6 +190,7 @@ export function update(root, ctx) {
   for (const [id, measure, conv, unit] of [
     ['ex-oil', 'oil_m3', convert.oil, units.oil()],
     ['ex-gas', 'gas_e3m3', convert.gas, units.gas()],
+    ['ex-water', 'water_m3', convert.water, units.water()],
   ]) {
     const rows = query({
       source: src, filters: f, groupBy: ['fecha', dim],
@@ -227,12 +246,25 @@ export function update(root, ctx) {
   const grandOil = agg.reduce((a, r) => a + (r.oil || 0), 0);
 
   root.querySelector('#ex-table-title').textContent = `Breakdown by ${label.toLowerCase()}`;
+
+  // Sort by whichever column the reader picked. `key` sorts the category name
+  // alphabetically; the measures sort numerically with nulls last either way.
+  const dirMul = tblDir === 'asc' ? 1 : -1;
+  agg.sort((a, b) => tblSort === 'key'
+    ? dirMul * String(a[dim] ?? '').localeCompare(String(b[dim] ?? ''))
+    : dirMul * ((a[tblSort] ?? -Infinity) - (b[tblSort] ?? -Infinity)) * -1);
+
+  const arrow = (k) => tblSort === k ? (tblDir === 'desc' ? ' ▾' : ' ▴') : '';
+  const th = (k, text) => `<th data-sort="${k}" style="cursor:pointer;user-select:none"
+      aria-sort="${tblSort === k ? (tblDir === 'desc' ? 'descending' : 'ascending') : 'none'}"
+      title="Sort by ${esc(text)}">${esc(text)}${arrow(k)}</th>`;
+
   root.querySelector('#ex-table').innerHTML = `
     <thead><tr>
-      <th>${esc(label)}</th>
-      <th>Oil (${units.oil()})</th><th>share</th>
-      <th>Gas (${units.gas()})</th>
-      <th>Water (${units.water()})</th>
+      ${th('key', label)}
+      ${th('oil', `Oil (${units.oil()})`)}<th>share</th>
+      ${th('gas', `Gas (${units.gas()})`)}
+      ${th('water', `Water (${units.water()})`)}
     </tr></thead>
     <tbody>${agg.map(r => `<tr>
       <td>${esc(r[dim] == null ? '(sin dato) (no data)' : i18nLabel(dim, r[dim]))}</td>

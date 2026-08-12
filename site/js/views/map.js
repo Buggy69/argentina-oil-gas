@@ -75,6 +75,7 @@ export async function render(root, ctx) {
             <select id="mp-size">
               <option value="cum_oil_m3">Cumulative oil</option>
               <option value="cum_gas_e3m3">Cumulative gas</option>
+              <option value="cum_water_m3">Cumulative water</option>
               <option value="lateral_m">Lateral length</option>
               <option value="none">Uniform</option>
             </select>
@@ -283,6 +284,7 @@ export function update(root, ctx) {
     `${num(shown)} wells plotted${hiddenCount ? `, ${num(hiddenCount)} hidden by the legend` : ''}${missing ? `, ${num(missing)} omitted for having no coordinate` : ''}${outside ? `, ${num(outside)} omitted for plotting outside Argentina` : ''}.
      Marker area is proportional to ${sizeBy === 'none' ? 'nothing (uniform)' :
      esc(({ cum_oil_m3: 'cumulative oil', cum_gas_e3m3: 'cumulative gas',
+            cum_water_m3: 'cumulative water',
             lateral_m: 'lateral length' })[sizeBy])}.
      ${emphasisMode ? 'Basin has more than three categories, so this view highlights one against grey rather than assigning colours that would not stay distinguishable for colourblind readers on a scatter.' : ''}`;
 

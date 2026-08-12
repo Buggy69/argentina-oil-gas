@@ -1,5 +1,5 @@
 {
-  "generated": "2026-08-12T15:50:07+00:00",
+  "generated": "2026-08-12T21:41:36+00:00",
   "snapshot": "2026-08-10",
   "petrodb": {
     "driver": "local_parquet",
@@ -157,27 +157,27 @@
   },
   "outputs": {
     "summary.json": {
-      "bytes": 245993,
-      "sha256": "4a6edb7abcbb4d21a461188a0a333fb59d213e2c8f87b8bf1fb0221cb8171972"
+      "bytes": 245994,
+      "sha256": "d28117032126c68289f7b110f77b03006c7e2540b9a0648df56ad263e77b685a"
     },
     "agg_monthly.parquet": {
-      "bytes": 5830878,
+      "bytes": 5830344,
       "rows": 396278,
-      "sha256": "59bdde99c7d7f50f2282de3140b06d0fd3e216a6c2e21baa1ccc5e71765ed1e4"
+      "sha256": "056793c94a1c24c3f28b0ba41287816f935b554ee495e2a355ad827c10c8b685"
     },
     "wells_slim.parquet": {
       "bytes": 3295609,
       "sha256": "cbf543b283454e67e090cb57b365791e550765651eb57cbfc7928cbe13c770a8"
     },
     "agg_block.parquet": {
-      "bytes": 4380737,
+      "bytes": 4382535,
       "rows": 345854,
-      "sha256": "638fa5393d35456211bb2ca004ad9802fbb7649a0bf5ec6c37c19d2ea398c75d"
+      "sha256": "5dfeb37e2220ae517d374f84115699a3e8fb10d1fb0e7747cbdc9274fb617f1b"
     },
     "typecurve.parquet": {
-      "bytes": 294539,
-      "rows": 17876,
-      "sha256": "1b20cbd9db301762b7f9512b5d16d1dc0b54b627bf8cfe7581684debfdfd90a4"
+      "bytes": 3911070,
+      "rows": 150999,
+      "sha256": "ebb69a53085ba69336e6a08c7fa54f732a960573b19ae4a046051af052c23aa4"
     },
     "wells_buckets": {
       "0": {

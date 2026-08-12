@@ -16,6 +16,8 @@ import { draw, baseOption, merge, lineSeries, makeScale, legendHTML, palette }
 import { label as i18nLabel } from '../i18n.js';
 
 let splitBy = 'trajectory';
+let fluid = 'oil';
+let sortKey = 'oil', sortDir = 'desc';
 let subtypeFilter = 'SHALE';
 
 export function render(root, ctx) {
@@ -28,6 +30,13 @@ export function render(root, ctx) {
               <option value="trajectory">Horizontal vs vertical</option>
               <option value="subtype">Shale vs tight vs conventional</option>
               <option value="vintage">By vintage (year of first production)</option>
+            </select>
+          </label>
+          <label>Fluid
+            <select id="pf-fluid">
+              <option value="oil">Oil</option>
+              <option value="gas">Gas</option>
+              <option value="water">Water</option>
             </select>
           </label>
           <label id="pf-sub-wrap">Resource subtype
@@ -48,7 +57,7 @@ export function render(root, ctx) {
       </section>
 
       <section class="card">
-        <h2>Oil type curves</h2>
+        <h2 id="pf-title">Oil type curves</h2>
         <p class="note" id="pf-note"></p>
         <div id="pf-chart" class="chart tall"></div>
         <div id="pf-legend"></div>
@@ -64,9 +73,9 @@ export function render(root, ctx) {
 
       <section class="card half">
         <h2>Best wells in the selection</h2>
-        <p class="note">Ranked by cumulative oil. Click a row to load that well's
-          full monthly history — fetched on demand from the yearly files by byte
-          range, not by downloading them.</p>
+        <p class="note">Click a column header to sort, again to reverse. Click a
+          row to load that well's full monthly history — one small file fetched
+          on demand, not the whole dataset.</p>
         <div class="scroll-x" style="max-height:300px"><table class="data" id="pf-top"></table></div>
         <div id="pf-well" class="chart short" style="margin-top:12px"></div>
       </section>
@@ -78,6 +87,17 @@ export function render(root, ctx) {
   root.querySelector('#pf-sub').addEventListener('change', e => {
     subtypeFilter = e.target.value; update(root, ctx);
   });
+  root.querySelector('#pf-fluid').addEventListener('change', e => {
+    fluid = e.target.value; update(root, ctx);
+  });
+  // Sortable table: clicking a header sorts by it, clicking again reverses.
+  root.querySelector('#pf-top').addEventListener('click', (e) => {
+    const key = e.target.closest('th[data-sort]')?.dataset.sort;
+    if (!key) return;
+    if (sortKey === key) sortDir = sortDir === 'desc' ? 'asc' : 'desc';
+    else { sortKey = key; sortDir = 'desc'; }
+    update(root, ctx);
+  });
 
   update(root, ctx);
 }
@@ -87,13 +107,27 @@ export function update(root, ctx) {
   root.querySelector('#pf-sub-wrap').style.display =
     splitBy === 'subtype' ? 'none' : '';
 
-  /* --- type curves ----------------------------------------------------- */
+  /* --- type curves -----------------------------------------------------
+     EVERY dimension the type-curve table carries is forwarded. It used to
+     forward only trajectory and basin, so filtering to one operator left the
+     curves showing the whole country while looking like a filtered result —
+     the worst kind of bug, because nothing about the chart said so. The table
+     now carries operator, formation and block as well, and anything it still
+     cannot honour is reported to the reader below rather than dropped. */
+  const TC_DIMS = ['trajectory', 'cuenca', 'operator', 'formation', 'area',
+                   'sub_tipo_recurso'];
   const tcFilters = {};
-  // Only dimensions the typecurve table actually carries are forwarded; the
-  // rest of the global filter has no meaning here and is silently ignored
-  // rather than producing an empty chart.
-  for (const k of ['trajectory', 'cuenca']) if (f[k]) tcFilters[k] = f[k];
-  if (splitBy !== 'subtype' && subtypeFilter !== 'ALL') tcFilters.subtype = [subtypeFilter];
+  for (const k of TC_DIMS) {
+    if (!f[k]) continue;
+    // The type-curve table calls the resource subtype `subtype`.
+    tcFilters[k === 'sub_tipo_recurso' ? 'subtype' : k] = f[k];
+  }
+  // The dropdown only applies when the global filter has not already set it.
+  if (splitBy !== 'subtype' && subtypeFilter !== 'ALL' && !tcFilters.subtype) {
+    tcFilters.subtype = [subtypeFilter];
+  }
+  const tcIgnored = Object.keys(f).filter(k =>
+    !TC_DIMS.includes(k) && k !== 'fecha' && (!Array.isArray(f[k]) || f[k].length));
 
   const dim = splitBy === 'subtype' ? 'subtype'
             : splitBy === 'vintage' ? 'vintage' : 'trajectory';
@@ -102,9 +136,9 @@ export function update(root, ctx) {
     source: 'typecurve', filters: tcFilters,
     groupBy: ['month_on_prod', dim],
     measures: [
-      { as: 'p10', col: 'oil_p10', agg: 'mean' },
-      { as: 'p50', col: 'oil_p50', agg: 'mean' },
-      { as: 'p90', col: 'oil_p90', agg: 'mean' },
+      { as: 'p10', col: `${fluid}_p10`, agg: 'mean' },
+      { as: 'p50', col: `${fluid}_p50`, agg: 'mean' },
+      { as: 'p90', col: `${fluid}_p90`, agg: 'mean' },
       { as: 'wells', col: 'wells', agg: 'sum' },
     ],
   });
@@ -125,6 +159,13 @@ export function update(root, ctx) {
     byCat.get(k).set(r.month_on_prod, r);
   }
 
+  // Oil, gas and water are different measures in different units — the fluid
+  // selector switches the whole chart rather than adding a second y-axis.
+  const convFluid = fluid === 'gas' ? convert.gas
+                  : fluid === 'water' ? convert.water : convert.oil;
+  const fluidUnit = fluid === 'gas' ? units.gas()
+                  : fluid === 'water' ? units.water() : units.oil();
+
   const series = [];
   // Only draw the P10–P90 band when comparing at most three groups; more than
   // that and overlapping translucent bands become unreadable, so the medians
@@ -137,7 +178,7 @@ export function update(root, ctx) {
       series.push({
         name: c + ' P10', type: 'line', stack: 'band-' + c, showSymbol: false,
         lineStyle: { opacity: 0 }, silent: true,
-        data: months.map(x => convert.oil(m.get(x)?.p10 ?? 0)),
+        data: months.map(x => convFluid(m.get(x)?.p10 ?? 0)),
       });
       series.push({
         name: c + ' P10–P90', type: 'line', stack: 'band-' + c, showSymbol: false,
@@ -145,20 +186,29 @@ export function update(root, ctx) {
         areaStyle: { color: col, opacity: 0.16 },
         data: months.map(x => {
           const r = m.get(x); if (!r) return 0;
-          return convert.oil(Math.max(0, (r.p90 ?? 0) - (r.p10 ?? 0)));
+          return convFluid(Math.max(0, (r.p90 ?? 0) - (r.p10 ?? 0)));
         }),
       });
     }
     series.push(lineSeries(c, months.map(x => {
-      const r = m.get(x); return r ? convert.oil(r.p50) : null;
+      const r = m.get(x); return r ? convFluid(r.p50) : null;
     }), col));
   }
 
   const totalWells = rows.filter(r => r.month_on_prod === 0)
     .reduce((a, r) => a + (r.wells || 0), 0);
+  root.querySelector('#pf-title').textContent =
+    `${fluid[0].toUpperCase()}${fluid.slice(1)} type curves`;
+  const pooled = rows.length > months.length * cats.length;
   root.querySelector('#pf-note').innerHTML =
-    `Median monthly oil per well, ${units.oil()}, against months since that
+    `Median monthly ${fluid} per well, ${fluidUnit}, against months since that
      well's first production. ${num(totalWells)} wells enter at month 0.
+     ${tcIgnored.length ? `<span style="color:var(--s4)">⚠ ${esc(tcIgnored.join(', '))}
+       ${tcIgnored.length > 1 ? 'are' : 'is'} not a type-curve dimension, so
+       ${tcIgnored.length > 1 ? 'they are' : 'it is'} not applied here.</span>` : ''}
+     ${pooled ? `<em>Percentiles are pre-computed per group and averaged when
+       several groups are pooled, so a pooled band is an approximation of the
+       true percentile — exact when the filter narrows to a single group.</em>` : ''}
      ${withBand ? 'Shaded band is P10–P90 across wells (p10 = low).'
                 : 'Bands are omitted above three groups — overlapping translucent bands stop being readable.'}
      Groups with fewer than five wells are not published.`;
@@ -169,7 +219,7 @@ export function update(root, ctx) {
       formatter: ps => {
         const shown = ps.filter(p => !/P10/.test(p.seriesName));
         return `Month ${shown[0]?.axisValue}<br>` + shown.map(p =>
-          `${esc(p.seriesName)}: ${compact(p.value, 1)} ${units.oil()}`).join('<br>');
+          `${esc(p.seriesName)}: ${compact(p.value, 1)} ${fluidUnit}`).join('<br>');
       } },
     xAxis: { type: 'category', data: months,
       name: 'months on production', nameLocation: 'middle', nameGap: 26,
@@ -221,15 +271,45 @@ export function update(root, ctx) {
     .filter(r => Number.isFinite(r.oil))
     .sort((a, b) => b.oil - a.oil).slice(0, 30);
 
+  const SORTS = {
+    sigla: (i) => valueAt(wells, 'sigla', i) ?? '',
+    cuenca: (i) => valueAt(wells, 'cuenca', i) ?? '',
+    trajectory: (i) => valueAt(wells, 'trajectory_class', i) ?? '',
+    oil: (i) => wells.cols.cum_oil_m3.values[i],
+    gas: (i) => wells.cols.cum_gas_e3m3.values[i],
+    water: (i) => wells.cols.cum_water_m3.values[i],
+  };
+  const getVal = SORTS[sortKey] || SORTS.oil;
+  const dirMul = sortDir === 'asc' ? 1 : -1;
+  const ranked = idx
+    .map(i => ({ i, v: getVal(i) }))
+    .filter(r => r.v != null && !(typeof r.v === 'number' && Number.isNaN(r.v)))
+    .sort((a, b) => dirMul * (typeof a.v === 'string'
+      ? a.v.localeCompare(b.v) : a.v - b.v))
+    .slice(0, 50);
+
+  const arrow = (k) => sortKey === k ? (sortDir === 'desc' ? ' ▾' : ' ▴') : '';
+  const th = (k, text) =>
+    `<th data-sort="${k}" style="cursor:pointer;user-select:none"
+        title="Sort by ${esc(text)}" aria-sort="${
+          sortKey === k ? (sortDir === 'desc' ? 'descending' : 'ascending') : 'none'
+        }">${esc(text)}${arrow(k)}</th>`;
+
   root.querySelector('#pf-top').innerHTML = `
-    <thead><tr><th>Well</th><th>Basin</th><th>Trajectory</th>
-      <th>Cum oil (${units.oil()})</th></tr></thead>
+    <thead><tr>
+      ${th('sigla', 'Well')}${th('cuenca', 'Basin')}${th('trajectory', 'Trajectory')}
+      ${th('oil', `Cum oil (${units.oil()})`)}
+      ${th('gas', `Cum gas (${units.gas()})`)}
+      ${th('water', `Cum water (${units.water()})`)}
+    </tr></thead>
     <tbody>${ranked.map(r => `
       <tr data-idpozo="${valueAt(wells, 'idpozo', r.i)}" style="cursor:pointer">
         <td>${esc(valueAt(wells, 'sigla', r.i) ?? '')}</td>
-        <td>${esc(valueAt(wells, 'cuenca', r.i) ?? '')}</td>
-        <td>${esc(valueAt(wells, 'trajectory', r.i) ?? '')}</td>
-        <td>${num(convert.oil(r.oil), 0)}</td>
+        <td>${esc(i18nLabel('cuenca', valueAt(wells, 'cuenca', r.i)) ?? '')}</td>
+        <td>${esc(valueAt(wells, 'trajectory_class', r.i) ?? '')}</td>
+        <td>${num(convert.oil(wells.cols.cum_oil_m3.values[r.i]), 0)}</td>
+        <td>${num(convert.gas(wells.cols.cum_gas_e3m3.values[r.i]), 0)}</td>
+        <td>${num(convert.water(wells.cols.cum_water_m3.values[r.i]), 0)}</td>
       </tr>`).join('')}</tbody>`;
 
   root.querySelector('#pf-top').onclick = async (e) => {

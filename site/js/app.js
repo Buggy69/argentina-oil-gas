@@ -121,6 +121,34 @@ ctx.ensureBlockCube = async () => {
   return blockCubePromise;
 };
 
+/* Type curves: 3.7 MB and needed by exactly one view, so they are fetched when
+   that view opens rather than at boot. Carrying operator, formation and block as
+   dimensions is what makes the curves respond to those filters at all. */
+let typecurvePromise = null;
+ctx.ensureTypecurve = async () => {
+  if (!typecurvePromise) {
+    typecurvePromise = (async () => {
+      const { loadTable } = await import('./store.js');
+      const { registerSource } = await import('./query.js');
+      const d = ctx.dims;
+      const coded = (n) => ({ labels: d[`tc_${n}`] || [] });
+      const t = await loadTable('data/typecurve.parquet', {
+        trajectory: coded('trajectory'), subtype: coded('subtype'),
+        cuenca: coded('cuenca'), operator: coded('operator'),
+        formation: coded('formation'), area: coded('area'),
+        vintage: 'num', month_on_prod: 'num', wells: 'num',
+        oil_p10: 'num', oil_p50: 'num', oil_p90: 'num',
+        gas_p10: 'num', gas_p50: 'num', gas_p90: 'num',
+        water_p10: 'num', water_p50: 'num', water_p90: 'num',
+      });
+      registerSource('typecurve', t);
+      ctx.typecurve = t;
+      return t;
+    })();
+  }
+  return typecurvePromise;
+};
+
 let cubeDetailPromise = null;
 ctx.ensureCubeDetail = async () => {
   if (!cubeDetailPromise) {
@@ -312,7 +340,52 @@ function buildFilterBar() {
   t.querySelector('#t-to').textContent = monthLabel(hi);
 
   document.getElementById('filterbar').hidden = false;
+  installDismissHandlers();
   syncFilterBar();
+}
+
+/**
+ * Close an open filter panel by clicking anywhere else, or pressing Escape.
+ *
+ * A <details> element only closes when its own summary is clicked again, which
+ * is fine for one disclosure on a page and wrong for a row of twelve: the panel
+ * covers the charts you are trying to read, and dismissing it means aiming at
+ * the same small chip you opened it with.
+ *
+ * Listening in the CAPTURE phase matters. A click on a checkbox inside the panel
+ * re-renders the option list, so by the time a bubbling listener ran, the
+ * original target could already be detached from the document and `closest()`
+ * would report it as outside the panel — closing the panel on every tick.
+ */
+let dismissInstalled = false;
+function installDismissHandlers() {
+  if (dismissInstalled) return;
+  dismissInstalled = true;
+
+  document.addEventListener('pointerdown', (e) => {
+    const inside = e.target.closest?.('.facet');
+    for (const d of document.querySelectorAll('.facet[open]')) {
+      if (d !== inside) d.open = false;
+    }
+  }, true);
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    const open = document.querySelectorAll('.facet[open]');
+    if (!open.length) return;
+    // Escape inside a search box clears it first; a second press closes.
+    if (e.target.classList?.contains('facet-search') && e.target.value) return;
+    for (const d of open) d.open = false;
+  });
+
+  // Opening one facet closes the others, so two panels never overlap.
+  document.getElementById('facets').addEventListener('toggle', (e) => {
+    const d = e.target;
+    if (!d.open || !d.classList.contains('facet')) return;
+    for (const other of document.querySelectorAll('.facet[open]')) {
+      if (other !== d) other.open = false;
+    }
+  }, true);
 }
 
 /* `label` is shadowed by the local variable inside syncFilterBar, so the i18n
@@ -382,6 +455,7 @@ async function renderView(force = false) {
       main.innerHTML = '<div class="boot"><p class="boot-title">Preparing '
         + 'data…</p></div>';
       if (NEEDS_WELL_DETAIL.has(name)) await ctx.ensureWellDetail();
+      if (name === 'performance') await ctx.ensureTypecurve();
       if (NEEDS_CUBE_DETAIL.has(name)) await ctx.ensureCubeDetail();
     }
     current = { name, module: mod };
@@ -499,21 +573,15 @@ async function boot() {
     wells: 'num', water_inj_m3: 'num',
   };
 
-  const [cube, wells, typecurve, provenance] = await Promise.all([
+  const [cube, wells, provenance] = await Promise.all([
     loadTable('data/agg_monthly.parquet', CUBE_CORE),
     loadTable('data/wells_slim.parquet', WELLS_CORE),
-    loadTable('data/typecurve.parquet', {
-      trajectory: 'cat', subtype: 'cat', cuenca: 'cat', vintage: 'num',
-      month_on_prod: 'num', wells: 'num',
-      oil_p10: 'num', oil_p50: 'num', oil_p90: 'num', gas_p50: 'num',
-    }),
     loadJSON('PROVENANCE.json').catch(() => ({})),
   ]);
 
   registerSource('cube', cube);
   registerSource('wells', wells);
-  registerSource('typecurve', typecurve);
-  ctx.cube = cube; ctx.wells = wells; ctx.typecurve = typecurve;
+  ctx.cube = cube; ctx.wells = wells;
   ctx.provenance = provenance;
   // Stable colour ordering for the dimensions available now; the rest are
   // ranked when the Explorer pulls them in.

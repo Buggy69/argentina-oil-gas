@@ -269,18 +269,12 @@ def main() -> int:
     }
     print(f"  formation code->name pairs: {len(dims['_formation_names'])}")
 
-    # Now that both cubes have registered their label tables, ship the sidecar.
-    (SITE / "dims.json").write_text(
-        json.dumps(dims, separators=(",", ":"), ensure_ascii=False),
-        encoding="utf-8")
-    print(f"  dimension labels: {sum(len(v) for v in dims.values())} values "
-          f"across {len(dims)} dimensions, "
-          f"{(SITE / 'dims.json').stat().st_size / 1024:.1f} KB")
-    missing_labels = [k for k, v in dims.items()
-                      if not v and not k.startswith("_")]
-    if missing_labels:
-        print(f"  ERROR: empty label tables for {missing_labels}", file=sys.stderr)
-        return 1
+    # dims.json is written at the very END of the build — see write_dims() near
+    # the bottom of main(). Writing it here caught out two cubes in a row: the
+    # block cube first, then the type curves, each registering label tables
+    # after the file had already been written, so their dictionaries decoded
+    # empty and every value looked absent. The rule is now simply: nothing
+    # writes dims.json except the single call after all tables are built.
 
     # ------------------------------------------------------------------ 2 --
     # Tier B, part 2: one row per well. This drives the map, the well-level
@@ -369,15 +363,31 @@ def main() -> int:
     #
     # p10 is the LOW value here — the statistical convention, not the reserves
     # one. Stated in the sidecar so no reader has to guess which way it runs.
+    # OPERATOR, FORMATION AND BLOCK ARE DIMENSIONS HERE TOO.
+    #
+    # They were missing, and the consequence was not a missing feature but a
+    # wrong chart: the Well-performance view forwarded only trajectory and
+    # basin, so filtering to one operator left the curves showing the entire
+    # country. It looked like a filtered result and was not one.
+    #
+    # The cost of carrying them is small because the ">= 5 wells" rule prunes
+    # the long tail: 17,876 -> 150,999 rows, 0.28 -> 0.94 MB.
+    #
+    # Water is added alongside oil and gas: produced water is 6.9 billion m3
+    # across 47,848 wells — a larger volume than the oil, and until now it was
+    # absent from every curve.
     print("building type curves …")
     con.execute("""
         CREATE OR REPLACE TABLE typecurve AS
         WITH base AS (
             SELECT
-                p.idpozo, p.fecha, p.prod_pet, p.prod_gas,
+                p.idpozo, p.fecha, p.prod_pet, p.prod_gas, p.prod_agua,
                 a.trajectory,
                 coalesce(a.sub_tipo_recurso, 'No informado') AS subtype,
                 a.cuenca,
+                coalesce(a.operator_latest, 'No informado')  AS operator,
+                coalesce(a.formprod, 'No informado')         AS formation,
+                coalesce(a.area, 'No informado')             AS area,
                 year(a.first_prod_month) AS vintage,
                 date_diff('month', a.first_prod_month, p.fecha) AS m
             FROM prod_monthly p
@@ -385,14 +395,18 @@ def main() -> int:
             WHERE a.first_prod_month IS NOT NULL
               AND p.fecha >= a.first_prod_month
         )
-        SELECT trajectory, subtype, cuenca, vintage, m AS month_on_prod,
+        SELECT trajectory, subtype, cuenca, operator, formation, area,
+               vintage, m AS month_on_prod,
                count(DISTINCT idpozo)                       AS wells,
                round(quantile_cont(prod_pet, 0.10), 2)      AS oil_p10,
                round(quantile_cont(prod_pet, 0.50), 2)      AS oil_p50,
                round(quantile_cont(prod_pet, 0.90), 2)      AS oil_p90,
-               round(avg(prod_pet), 2)                      AS oil_mean,
+               round(quantile_cont(prod_gas, 0.10), 2)      AS gas_p10,
                round(quantile_cont(prod_gas, 0.50), 2)      AS gas_p50,
-               round(avg(prod_gas), 2)                      AS gas_mean
+               round(quantile_cont(prod_gas, 0.90), 2)      AS gas_p90,
+               round(quantile_cont(prod_agua, 0.10), 2)     AS water_p10,
+               round(quantile_cont(prod_agua, 0.50), 2)     AS water_p50,
+               round(quantile_cont(prod_agua, 0.90), 2)     AS water_p90
         FROM base
         WHERE m BETWEEN 0 AND 119        -- ten years is past any useful reading
         GROUP BY ALL
@@ -402,12 +416,56 @@ def main() -> int:
     """)
     tc_rows = con.execute("SELECT count(*) FROM typecurve").fetchone()[0]
     print(f"  typecurve rows: {tc_rows:,}")
+    # Type-curve dimensions are coded like the cubes', for the same reason.
+    TC_DIMS = ["trajectory", "subtype", "cuenca", "operator", "formation", "area"]
+    for d in TC_DIMS:
+        vals = [r[0] for r in con.execute(
+            f"SELECT DISTINCT {d} FROM typecurve WHERE {d} IS NOT NULL "
+            f"ORDER BY {d}").fetchall()]
+        dims[f"tc_{d}"] = vals
+        con.execute(f"CREATE OR REPLACE TABLE tcmap_{d} AS "
+                    f"SELECT * FROM (VALUES " +
+                    ",".join(f"(?, {i})" for i in range(len(vals))) +
+                    f") AS t(val, code)", vals)
+    tjoins = " ".join(f"LEFT JOIN tcmap_{d} k_{d} ON k_{d}.val = c.{d}" for d in TC_DIMS)
+    tcols = ", ".join(f"coalesce(k_{d}.code, -1)::INTEGER AS {d}" for d in TC_DIMS)
     con.execute(f"""
-        COPY (SELECT * FROM typecurve ORDER BY trajectory, subtype, cuenca,
-                                                vintage, month_on_prod)
+        COPY (
+            SELECT {tcols}, c.vintage, c.month_on_prod, c.wells,
+                   c.oil_p10, c.oil_p50, c.oil_p90,
+                   c.gas_p10, c.gas_p50, c.gas_p90,
+                   c.water_p10, c.water_p50, c.water_p90
+            FROM typecurve c {tjoins}
+            ORDER BY c.trajectory, c.subtype, c.cuenca, c.vintage, c.month_on_prod
+        )
         TO '{(SITE / 'typecurve.parquet').as_posix()}'
         (FORMAT parquet, COMPRESSION zstd)
     """)
+
+    # ------------------------------------------------------------- dims ----
+    # Every table has now registered its label tables, so the sidecar can be
+    # written exactly once, here.
+    (SITE / "dims.json").write_text(
+        json.dumps(dims, separators=(",", ":"), ensure_ascii=False),
+        encoding="utf-8")
+    label_dims = {k: v for k, v in dims.items() if not k.startswith("_")}
+    print(f"  dimension labels: {sum(len(v) for v in label_dims.values())} values "
+          f"across {len(label_dims)} dimensions, "
+          f"{(SITE / 'dims.json').stat().st_size / 1024:.1f} KB")
+
+    # Guard against exactly the bug this section exists to prevent: a table that
+    # ships coded columns with no labels to decode them against.
+    missing_labels = [k for k, v in label_dims.items() if not v]
+    expected_prefixes = ("", "block_", "tc_")
+    for want in ("cuenca", "operator", "trajectory"):
+        for pre in expected_prefixes:
+            key = pre + want
+            if key not in dims and pre in ("block_", "tc_"):
+                missing_labels.append(f"{key} (never registered)")
+    if missing_labels:
+        print(f"  ERROR: label tables missing or empty: {missing_labels}",
+              file=sys.stderr)
+        return 1
 
     # ------------------------------------------------------------------ 4 --
     # Tier A: the instant-paint summary. Small enough to inline-parse before
@@ -516,8 +574,9 @@ def main() -> int:
         ("agg_block.parquet (tier B, lazy)",
          (SITE / "agg_block.parquet").stat().st_size, 6 * 1_048_576,
          f"{block_rows:,} rows, all 455 blocks"),
-        ("typecurve.parquet (tier B)", (SITE / "typecurve.parquet").stat().st_size,
-         3 * 1_048_576, f"{tc_rows:,} rows"),
+        ("typecurve.parquet (tier B, lazy)",
+         (SITE / "typecurve.parquet").stat().st_size, 6 * 1_048_576,
+         f"{tc_rows:,} rows, operator/formation/block aware"),
         (f"wells/ (tier C, {tier_c_buckets} buckets)", tier_c_total,
          B["tier_c_max_total_mb"] * 1_048_576, ""),
         ("largest tier C bucket", tier_c_max, B["tier_c_max_file_mb"] * 1_048_576,
