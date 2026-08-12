@@ -134,7 +134,19 @@ a { color: var(--s1); }
 .facet-panel label:hover { background: var(--plane); }
 .facet-panel .count { margin-left: auto; color: var(--ink-muted); font-size: 12px;
   font-variant-numeric: tabular-nums; }
-.facet-tools { display: flex; gap: 8px; padding: 4px 8px 8px; }
+.facet-tools { display: flex; gap: 8px; padding: 4px 8px 8px; align-items: center; }
+.facet-hint { color: var(--ink-muted); font-size: 11px; margin-left: auto; }
+/* The search box sticks to the top of the scrolling panel: with 1,181 fields you
+   are often scrolling the list while still refining the term. */
+.facet-search {
+  position: sticky; top: 0; z-index: 1;
+  width: 100%; font: inherit; font-size: 13px; padding: 8px 10px;
+  min-height: 38px; box-sizing: border-box;
+  border: 1px solid var(--hairline); border-radius: 7px;
+  background: var(--plane); color: var(--ink-1); margin-bottom: 4px;
+}
+.facet-search:focus { outline: 2px solid var(--s1); outline-offset: 1px; }
+.facet-list { display: block; }
 .filter-actions {
   display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
   margin-top: 9px; font-size: 13px; color: var(--ink-2);

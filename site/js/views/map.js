@@ -17,6 +17,7 @@ import { queryFilters, state } from '../state.js';
 import { num, compact, convert, units, esc } from '../format.js';
 import { draw, baseOption, merge, palette, OTHER_GREY, legendHTML } from '../charts.js';
 import { loadJSON } from '../store.js';
+import { label as i18nLabel } from '../i18n.js';
 
 /* The basemap is Argentina's 24 provinces, the national outline and the
    neighbouring countries, compiled into the site at build time from Natural
@@ -40,13 +41,17 @@ async function ensureBasemap() {
 }
 
 const COLOR_BY = [
-  ['trajectory', 'Trajectory', 3],
+  // Horizontal / Directional / Vertical are three coloured slots; Unknown falls
+  // to grey, which is not a palette slot — so this stays inside the three-colour
+  // limit an all-pairs scatter requires.
+  ['trajectory_class', 'Trajectory (H / D / V)', 3],
+  ['trajectory', 'Trajectory (measured only)', 3],
   ['tipo_recurso', 'Resource type', 3],
   ['well_fluid', 'Well fluid type', 3],
   ['cuenca', 'Basin (highlight one)', 99],
 ];
 
-let colorBy = 'trajectory';
+let colorBy = 'trajectory_class';
 let highlight = null;
 let sizeBy = 'cum_oil_m3';
 
@@ -163,12 +168,27 @@ export function update(root, ctx) {
     classes.get(key).push([x, y, s, i]);
   }
 
-  const order = [...classes.keys()].filter(k => k !== 'Other' && k !== '(sin dato)').sort();
-  const pal = palette();
-  const colorOf = (k) => (k === 'Other' || k === '(sin dato)')
-    ? OTHER_GREY() : pal[Math.min(order.indexOf(k), 2)] ?? OTHER_GREY();
+  /* Classes that are an absence of information get grey, not a hue.
+     'Unknown' belongs here: it is not a fourth kind of well, it is the wells
+     whose kind we cannot state. Leaving it out of this list was a real bug —
+     `order` then held four entries, the palette index was clamped at 2, and
+     Vertical and Unknown were drawn in the SAME colour.
+     Keeping the coloured set at three also holds the map inside the
+     three-slot limit an all-pairs scatter needs to stay colourblind-safe. */
+  const NEUTRAL = new Set(['Other', '(sin dato)', 'Unknown', 'Not indicated',
+                           'No informado']);
 
-  const keys = order.concat([...classes.keys()].filter(k => k === 'Other' || k === '(sin dato)'));
+  const order = [...classes.keys()].filter(k => !NEUTRAL.has(k)).sort();
+  const pal = palette();
+  const colorOf = (k) => {
+    if (NEUTRAL.has(k)) return OTHER_GREY();
+    const i = order.indexOf(k);
+    return (i >= 0 && i < 3) ? pal[i] : OTHER_GREY();
+  };
+
+  // Coloured classes first, then the neutral ones — the legend reads as
+  // "these are the kinds, and this is the remainder".
+  const keys = order.concat([...classes.keys()].filter(k => NEUTRAL.has(k)));
 
   // `large: true` is ECharts' fast path for huge scatters, but it renders every
   // point at ONE size — a function symbolSize is silently ignored and, worse,
@@ -247,7 +267,7 @@ export function update(root, ctx) {
         const i = p.data[3];
         const oil = valueAt(wells, 'cum_oil_m3', i);
         return `<strong>${esc(valueAt(wells, 'sigla', i) ?? '—')}</strong><br>` +
-          `${esc(valueAt(wells, 'cuenca', i) ?? '')} · ${esc(valueAt(wells, 'formation', i) ?? '')}<br>` +
+          `${esc(i18nLabel('cuenca', valueAt(wells, 'cuenca', i)) ?? '')} · ${esc(i18nLabel('formation', valueAt(wells, 'formation', i)) ?? '')}<br>` +
           `${esc(valueAt(wells, 'operator', i) ?? '')}<br>` +
           `${esc(valueAt(wells, 'trajectory', i) ?? '')}` +
           (valueAt(wells, 'lateral_m', i) ? ` · ${num(valueAt(wells, 'lateral_m', i))} m lateral` : '') +
@@ -262,5 +282,5 @@ export function update(root, ctx) {
   }));
 
   root.querySelector('#mp-legend').innerHTML = legendHTML(
-    keys.map(k => ({ label: esc(k), color: colorOf(k) })));
+    keys.map(k => ({ label: esc(i18nLabel(colorBy, k)), color: colorOf(k) })));
 }

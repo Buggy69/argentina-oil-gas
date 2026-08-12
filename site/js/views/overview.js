@@ -11,6 +11,7 @@ import { compact, num, convert, units, pct } from '../format.js';
 import { draw, baseOption, merge, areaSeries, lineSeries, makeScale, legendHTML }
   from '../charts.js';
 import { monthLabel } from '../store.js';
+import { label as i18nLabel } from '../i18n.js';
 
 /**
  * TIER A FAST PATH — draw the whole Overview from summary.json alone.
@@ -73,7 +74,7 @@ export function renderFromSummary(root, ctx) {
         b, months.map(m => conv(byBasin.get(b).get(m) || 0)), scale(b))),
     }));
     root.querySelector('#' + id + '-legend').innerHTML =
-      legendHTML(shown.map(b => ({ label: b, color: scale(b) })));
+      legendHTML(shown.map(b => ({ label: i18nLabel('cuenca', b), color: scale(b) })));
   }
 
   // The operator ranking needs the cube; say so rather than leaving an empty
@@ -231,7 +232,7 @@ export function update(root, ctx) {
       series,
     }));
     root.querySelector('#' + id + '-legend').innerHTML =
-      legendHTML(shown.map(b => ({ label: b, color: scale(b) })));
+      legendHTML(shown.map(b => ({ label: i18nLabel('cuenca', b), color: scale(b) })));
   }
 
   /* --- unconventional share ------------------------------------------- */

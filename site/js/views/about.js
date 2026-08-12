@@ -87,6 +87,38 @@ export async function render(root, ctx) {
         “horizontal versus vertical” is really a comparison within the
         unconventional population.</p>
 
+        <h3>Spanish is the data; English is an annotation</h3>
+        <p>The publisher issues its categories in Spanish, and those exact strings
+        are what this site stores, filters on, puts in the URL and writes to a
+        CSV export. The English appears after the original in brackets —
+        <em>NO CONVENCIONAL (Unconventional)</em>, <em>Bombeo Mecánico (Rod
+        pump)</em> — so a figure checked against the source still matches, and a
+        link you share still resolves. Place names are not translated: provinces,
+        fields and concessions are toponyms. Formation codes are paired with the
+        registry's own spelled-out name, so <code>VMUT</code> reads
+        <em>VMUT (Vaca Muerta)</em>.</p>
+
+        <h3>Three trajectory classes, from two kinds of evidence</h3>
+        <p>The <strong>Trajectory</strong> facet gives the best available answer
+        per well — Horizontal, Directional, Vertical or Unknown — by combining
+        the measured lateral length with the naming convention. The measurement
+        always wins where it exists; the name speaks only for wells with no
+        fracture record:</p>
+        <ul>
+          <li><strong>Horizontal</strong> ${num(kpi.wells_horizontal)} measured
+            (lateral ≥ 500 m) plus 393 identified by name</li>
+          <li><strong>Directional</strong> 3,581 — 925 measured as short-lateral
+            and named <code>(d)</code>, plus 2,656 with no record but named
+            <code>(d)</code></li>
+          <li><strong>Vertical</strong> 1,114 measured short-lateral with no
+            directional marker</li>
+          <li><strong>Unknown</strong> 77,903 — no fracture record and no marker.
+            Still never imputed.</li>
+        </ul>
+        <p>The two source facets remain available separately —
+        <strong>Trajectory (measured only)</strong> and <strong>Well name
+        marker</strong> — so you can always see which evidence a number rests on.</p>
+
         <h3>Two independent facets describe trajectory — on purpose</h3>
         <p><strong>Trajectory (measured)</strong> comes from the reported lateral
         length in the fracture filings. <strong>Well name marker</strong> comes

@@ -11,6 +11,7 @@ import { compact, num, convert, units, toCSV, downloadCSV, CITATION, esc } from 
 import { draw, baseOption, merge, lineSeries, areaSeries, makeScale, legendHTML }
   from '../charts.js';
 import { monthLabel } from '../store.js';
+import { label as i18nLabel } from '../i18n.js';
 
 /* Each break-down dimension names the cube that carries it.
    'main'  — the start-up cube: basin, province, formation, operator, fluid,
@@ -26,14 +27,16 @@ const DIMENSIONS = [
   ['formation', 'Formation', 'main'],
   ['operator', 'Operator', 'any'],
   ['well_fluid', 'Well fluid type', 'main'],
-  ['trajectory', 'Trajectory (measured)', 'any'],
+  ['trajectory_class', 'Trajectory', 'block'],
+  ['trajectory', 'Trajectory (measured only)', 'any'],
   ['name_marker', 'Well name marker', 'block'],
   ['tipo_recurso', 'Resource type', 'main'],
   ['sub_tipo_recurso', 'Resource subtype', 'main'],
 ];
 
 /** Dimensions only the block cube has. */
-const BLOCK_ONLY = new Set(['area', 'yacimiento', 'name_marker']);
+const BLOCK_ONLY = new Set(['area', 'yacimiento', 'name_marker',
+                            'trajectory_class']);
 
 /**
  * Choose the cube that can answer this question.
@@ -204,7 +207,10 @@ export function update(root, ctx) {
       series,
     }));
     root.querySelector('#' + id + '-legend').innerHTML =
-      legendHTML(cats.map(c => ({ label: esc(c ?? '(sin dato)'), color: scale(c) })));
+      legendHTML(cats.map(c => ({
+        label: esc(c == null ? '(sin dato) (no data)'
+                             : c === 'Other' ? 'Other' : i18nLabel(dim, c)),
+        color: scale(c) })));
   }
 
   /* --- table ----------------------------------------------------------- */
@@ -229,7 +235,7 @@ export function update(root, ctx) {
       <th>Water (${units.water()})</th>
     </tr></thead>
     <tbody>${agg.map(r => `<tr>
-      <td>${esc(r[dim] ?? '(sin dato)')}</td>
+      <td>${esc(r[dim] == null ? '(sin dato) (no data)' : i18nLabel(dim, r[dim]))}</td>
       <td>${num(convert.oil(r.oil), 0)}</td>
       <td>${grandOil ? (r.oil / grandOil * 100).toFixed(1) + '%' : '—'}</td>
       <td>${num(convert.gas(r.gas), 0)}</td>

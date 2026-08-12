@@ -172,6 +172,39 @@ def main() -> int:
                 WHEN w.sigla ILIKE '%(d)%' THEN '(d) directional'
                 ELSE 'Not indicated'
             END AS name_marker,
+
+            -- COMBINED CLASSIFICATION: the best available answer per well.
+            --
+            -- `trajectory` above is the pure measurement and stays untouched.
+            -- This column merges it with the naming convention to give the
+            -- three-way split people actually want — horizontal, directional,
+            -- vertical — instead of a binary that calls a deviated well
+            -- "Vertical" and leaves 95 % of the field "Unknown".
+            --
+            -- The measurement always wins where it exists. Only where there is
+            -- no fracture record at all does the name get to speak:
+            --
+            --   measured, lateral >= 500 m        -> Horizontal   (2,426)
+            --   measured, short lateral, name (d) -> Directional  (  925)
+            --   measured, short lateral otherwise -> Vertical     (1,114)
+            --   no record, name (h)               -> Horizontal   (  393)
+            --   no record, name (d)               -> Directional  (2,656)
+            --   no record, no marker              -> Unknown      (77,903)
+            --
+            -- Note the ordering: a measured well whose name says (h) but whose
+            -- reported lateral is short stays with the measurement, because the
+            -- lateral length is evidence and the name is a convention.
+            CASE
+                WHEN f.idpozo IS NOT NULL AND f.lateral_m >= {HORIZONTAL_M}
+                    THEN 'Horizontal'
+                WHEN f.idpozo IS NOT NULL AND w.sigla ILIKE '%(d)%'
+                    THEN 'Directional'
+                WHEN f.idpozo IS NOT NULL
+                    THEN 'Vertical'
+                WHEN w.sigla ILIKE '%(h)%' THEN 'Horizontal'
+                WHEN w.sigla ILIKE '%(d)%' THEN 'Directional'
+                ELSE 'Unknown'
+            END AS trajectory_class,
             -- Completion intensity. Guarded with nullif so a zero lateral or a
             -- zero stage count yields NULL (undefined) instead of a division
             -- error or a misleading infinity.

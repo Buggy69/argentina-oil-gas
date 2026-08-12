@@ -14,6 +14,7 @@ import { queryFilters } from '../state.js';
 import { compact, num, convert, units, esc, pct } from '../format.js';
 import { draw, baseOption, merge, barSeries, lineSeries } from '../charts.js';
 import { describe, histogram, lorenz, correlationMatrix, topShare } from '../stats.js';
+import { label as i18nLabel } from '../i18n.js';
 
 const MEASURES = [
   ['cum_oil_m3', 'Cumulative oil', 'oil'],
@@ -163,7 +164,7 @@ export function update(root, ctx) {
       <th>min</th><th>p10</th><th>p25</th><th>median</th><th>p75</th><th>p90</th><th>max</th>
     </tr></thead>
     <tbody>${rows.map(([k, d]) => `<tr>
-      <td>${esc(k)}</td><td>${num(d.n)}</td><td>${num(d.missing)}</td>
+      <td>${esc(k === 'All selected wells' ? k : i18nLabel(groupDim, k))}</td><td>${num(d.n)}</td><td>${num(d.missing)}</td>
       <td>${compact(d.mean, 2)}</td><td>${compact(d.sd, 2)}</td>
       <td>${compact(d.min, 2)}</td><td>${compact(d.p10, 2)}</td>
       <td>${compact(d.p25, 2)}</td><td>${compact(d.p50, 2)}</td>

@@ -14,6 +14,7 @@ import { registerSource, getSource } from './query.js';
 import { state, onChange, readHash, setView, toggleFilter, clearFilters,
          setOilfield, setMonthRange, activeFilterCount } from './state.js';
 import { setOilfieldUnits, units, num, esc } from './format.js';
+import { label, setFormationNames } from './i18n.js';
 import { resizeAll, disposeAll } from './charts.js';
 
 const VIEWS = {
@@ -35,7 +36,8 @@ const FACETS = [
   ['formation', 'Formation', 'wells'],
   ['operator', 'Operator', 'wells'],
   ['well_fluid', 'Oil / gas well', 'wells'],
-  ['trajectory', 'Trajectory (measured)', 'wells'],
+  ['trajectory_class', 'Trajectory', 'wells'],
+  ['trajectory', 'Trajectory (measured only)', 'wells'],
   ['name_marker', 'Well name marker', 'wells'],
   ['tipo_recurso', 'Resource type', 'wells'],
   ['sub_tipo_recurso', 'Shale / tight', 'wells'],
@@ -57,6 +59,7 @@ const WELLS_CORE = {
   // filter bar is built at boot, and a facet that appears only after you visit
   // some other view first is worse than the ~110 ms each costs to decode.
   area: 'cat', yacimiento: 'cat', name_marker: 'cat',
+  trajectory_class: 'cat',
 };
 
 const WELLS_DETAIL = {
@@ -105,12 +108,13 @@ ctx.ensureBlockCube = async () => {
         cuenca: coded('cuenca'), area: coded('area'),
         yacimiento: coded('yacimiento'), operator: coded('operator'),
         trajectory: coded('trajectory'), name_marker: coded('name_marker'),
+        trajectory_class: coded('trajectory_class'),
         wells: 'num', wells_producing: 'num',
         oil_m3: 'num', gas_e3m3: 'num', water_m3: 'num',
       });
       registerSource('block', t);
       ctx.block = t;
-      computeOrderFor(t, ['area', 'yacimiento', 'name_marker']);
+      computeOrderFor(t, ['area', 'yacimiento', 'name_marker', 'trajectory_class']);
       return t;
     })();
   }
@@ -178,25 +182,76 @@ function buildFilterBar() {
   const host = document.getElementById('facets');
   host.innerHTML = '';
 
-  for (const [dim, label, source] of FACETS) {
+  for (const [dim, label_, source] of FACETS) {
     const table = ctx[source === 'wells' ? 'wells' : 'cube'];
     if (!table || !table.cols[dim]) continue;
-    const domain = table.domain(dim).slice(0, 60);
+
+    // FULL domain, not a slice. The list used to be capped at the top 60 values,
+    // which quietly made most of the data unreachable: with 455 blocks and 1,181
+    // fields, anything outside the 60 most-drilled simply could not be selected.
+    // The cap only ever existed to keep the panel short — a search box does that
+    // job without hiding anything.
+    const domain = table.domain(dim);
 
     const d = document.createElement('details');
     d.className = 'facet';
     d.innerHTML = `
       <summary></summary>
       <div class="facet-panel">
+        <input type="search" class="facet-search" placeholder="Search ${esc(label_)}…"
+               autocomplete="off" spellcheck="false"
+               aria-label="Search ${esc(label_)} values">
         <div class="facet-tools">
           <button class="btn-quiet" data-act="all">All</button>
           <button class="btn-quiet" data-act="none">None</button>
+          <span class="facet-hint"></span>
         </div>
-        ${domain.map(o => `
-          <label><input type="checkbox" value="${esc(o.value)}">
-            <span>${esc(o.value)}</span>
-            <span class="count">${num(o.count)}</span></label>`).join('')}
+        <div class="facet-list"></div>
       </div>`;
+
+    const listEl = d.querySelector('.facet-list');
+    const hintEl = d.querySelector('.facet-hint');
+    const searchEl = d.querySelector('.facet-search');
+
+    /* How many options to put in the DOM at once. Every value stays reachable —
+       typing narrows the whole domain, not the visible page — but rendering
+       1,181 checkboxes on every keystroke is wasted work when nobody scrolls
+       past the first screen. */
+    const PAGE = 80;
+
+    const renderOptions = () => {
+      const term = fold(searchEl.value.trim());
+      const sel = new Set(state.filters[dim] || []);
+      // Selected values are always shown even if they do not match the search,
+      // so a filter can never be active but invisible.
+      const matches = domain.filter(o =>
+        sel.has(o.value) || !term || fold(label(dim, o.value)).includes(term));
+      const shown = matches.slice(0, PAGE);
+      listEl.innerHTML = shown.map(o => `
+        <label><input type="checkbox" value="${esc(o.value)}"${
+          sel.has(o.value) ? ' checked' : ''}>
+          <span>${esc(label(dim, o.value))}</span>
+          <span class="count">${num(o.count)}</span></label>`).join('')
+        || `<p class="facet-hint" style="padding:8px">No match in
+             ${num(domain.length)} values.</p>`;
+      hintEl.textContent = matches.length > shown.length
+        ? `showing ${shown.length} of ${matches.length}${term ? ' matches' : ''} — refine the search`
+        : (term ? `${matches.length} match${matches.length === 1 ? '' : 'es'}`
+                : `${num(domain.length)} values`);
+    };
+
+    searchEl.addEventListener('input', renderOptions);
+    // Keep Enter from submitting anything, and let Escape clear the box.
+    searchEl.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') e.preventDefault();
+      if (e.key === 'Escape') { searchEl.value = ''; renderOptions(); }
+    });
+    // Focus the search box when the facet is opened — the common case for a
+    // high-cardinality dimension is that you already know the name.
+    d.addEventListener('toggle', () => { if (d.open) searchEl.focus(); });
+
+    d._renderOptions = renderOptions;
+    renderOptions();
 
     d.querySelector('.facet-panel').addEventListener('change', (e) => {
       if (e.target.type !== 'checkbox') return;
@@ -212,7 +267,7 @@ function buildFilterBar() {
     });
 
     d.dataset.dim = dim;
-    d.dataset.label = label;
+    d.dataset.label = label_;
     host.appendChild(d);
   }
 
@@ -260,6 +315,26 @@ function buildFilterBar() {
   syncFilterBar();
 }
 
+/* `label` is shadowed by the local variable inside syncFilterBar, so the i18n
+   function is reached through this alias rather than renaming it everywhere. */
+const valueLabel = (dim, v) => label(dim, v);
+
+/**
+ * Normalise text for searching: lower case, and accents stripped.
+ *
+ * Argentine names are full of diacritics — Neuquén, Ñirihuau, Puesto Zuñiga —
+ * and nobody typing into a search box reaches for the accent. NFD splits a
+ * letter from its combining mark so the marks can be removed, which makes
+ * "zuniga" match "ZUÑIGA" and "neuquen" match "Neuquén".
+ */
+function fold(s) {
+  // ̀-ͯ is the combining-diacritical-marks block. Written as escapes
+  // rather than literal marks so the source cannot be mangled by an editor or a
+  // re-encoding.
+  return String(s ?? '').normalize('NFD')
+    .replace(/[̀-ͯ]/g, '').toLowerCase();
+}
+
 function syncFilterBar() {
   for (const d of document.querySelectorAll('.facet')) {
     const dim = d.dataset.dim, label = d.dataset.label;
@@ -272,13 +347,16 @@ function syncFilterBar() {
     }
     const sel = state.filters[dim] || [];
     d.classList.toggle('active', sel.length > 0);
+    // The chip shows the gloss too, but only for a single selection — with the
+    // English appended, two or three values would overflow the row on a phone.
     d.querySelector('summary').textContent =
       sel.length === 0 ? label
-      : sel.length === 1 ? `${label}: ${sel[0]}`
+      : sel.length === 1 ? `${label}: ${valueLabel(dim, sel[0])}`
       : `${label}: ${sel.length} selected`;
-    for (const cb of d.querySelectorAll('input[type=checkbox]')) {
-      cb.checked = sel.includes(cb.value);
-    }
+    // Re-render rather than poking checkboxes: the option list is now a filtered
+    // view of the full domain, so a selection made elsewhere (a shared URL, the
+    // Reset button) has to be able to bring its value into view.
+    if (d._renderOptions) d._renderOptions();
   }
   const n = activeFilterCount();
   document.getElementById('selection-summary').textContent =
@@ -394,6 +472,8 @@ async function boot() {
   // materialisations. dims.json is a few kilobytes and arrives with summary.
   const dims = await loadJSON('data/dims.json');
   ctx.dims = dims;
+  // Formation code -> name, so the UI can render "VMUT (Vaca Muerta)".
+  setFormationNames(dims._formation_names);
   const coded = (name) => ({ labels: dims[name] || [] });
 
   /* The cube is split for the same reason wells_slim is, and the measurement

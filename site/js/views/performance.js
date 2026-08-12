@@ -13,6 +13,7 @@ import { queryFilters } from '../state.js';
 import { compact, num, convert, units, esc } from '../format.js';
 import { draw, baseOption, merge, lineSeries, makeScale, legendHTML, palette }
   from '../charts.js';
+import { label as i18nLabel } from '../i18n.js';
 
 let splitBy = 'trajectory';
 let subtypeFilter = 'SHALE';
@@ -178,7 +179,7 @@ export function update(root, ctx) {
     series,
   }));
   root.querySelector('#pf-legend').innerHTML =
-    legendHTML(cats.map(c => ({ label: esc(c), color: scale(c) })));
+    legendHTML(cats.map(c => ({ label: esc(i18nLabel(dim === 'subtype' ? 'sub_tipo_recurso' : dim, c)), color: scale(c) })));
 
   /* --- intensity scatter ------------------------------------------------ */
   const wells = getSource('wells');
@@ -212,7 +213,7 @@ export function update(root, ctx) {
     })),
   }));
   root.querySelector('#pf-scatter-legend').innerHTML =
-    legendHTML([...groups.keys()].map(k => ({ label: esc(k), color: colorOf(k) })));
+    legendHTML([...groups.keys()].map(k => ({ label: esc(i18nLabel('trajectory', k)), color: colorOf(k) })));
 
   /* --- top wells -------------------------------------------------------- */
   const ranked = idx

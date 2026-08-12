@@ -194,7 +194,7 @@ def main() -> int:
         SELECT
             p.fecha, a.cuenca, a.area, a.yacimiento,
             coalesce(p.operator_asof, 'No informado') AS operator,
-            a.trajectory, a.name_marker,
+            a.trajectory, a.name_marker, a.trajectory_class,
             count(DISTINCT p.idpozo) AS wells,
             count(DISTINCT p.idpozo) FILTER (
                 WHERE coalesce(p.prod_pet,0) + coalesce(p.prod_gas,0) > 0) AS wells_producing,
@@ -210,7 +210,7 @@ def main() -> int:
     print(f"  block cube rows: {block_rows:,}")
 
     BLOCK_DIMS = ["cuenca", "area", "yacimiento", "operator", "trajectory",
-                  "name_marker"]
+                  "name_marker", "trajectory_class"]
     for d in BLOCK_DIMS:
         vals = [r[0] for r in con.execute(
             f"SELECT DISTINCT {d} FROM agg_block WHERE {d} IS NOT NULL "
@@ -249,6 +249,26 @@ def main() -> int:
               "design; a non-zero drift here means something else is wrong)",
               file=sys.stderr)
 
+    # FORMATION CODE -> NAME.
+    #
+    # `formprod` is a four-letter code (VMUT, CORI, BBAR) and that is what the
+    # filter bar was showing — unreadable unless you already know the codes. The
+    # registry also carries the spelled-out name in `formacion`, and the mapping
+    # is clean: all 77 codes resolve to exactly one name. So the UI can show
+    # "VMUT (Vaca Muerta)" and stay faithful to the published identifier.
+    #
+    # Source names are lower case; title-casing is left to the frontend so the
+    # stored value remains exactly what the publisher issued.
+    dims["_formation_names"] = {
+        code: name for code, name in con.execute("""
+            SELECT formprod, arg_max(formacion, c) FROM (
+                SELECT formprod, formacion, count(*) AS c FROM well_attrs
+                WHERE formprod IS NOT NULL AND formacion IS NOT NULL
+                GROUP BY 1, 2)
+            GROUP BY 1""").fetchall()
+    }
+    print(f"  formation code->name pairs: {len(dims['_formation_names'])}")
+
     # Now that both cubes have registered their label tables, ship the sidecar.
     (SITE / "dims.json").write_text(
         json.dumps(dims, separators=(",", ":"), ensure_ascii=False),
@@ -256,7 +276,8 @@ def main() -> int:
     print(f"  dimension labels: {sum(len(v) for v in dims.values())} values "
           f"across {len(dims)} dimensions, "
           f"{(SITE / 'dims.json').stat().st_size / 1024:.1f} KB")
-    missing_labels = [k for k, v in dims.items() if not v]
+    missing_labels = [k for k, v in dims.items()
+                      if not v and not k.startswith("_")]
     if missing_labels:
         print(f"  ERROR: empty label tables for {missing_labels}", file=sys.stderr)
         return 1
@@ -273,7 +294,7 @@ def main() -> int:
                    tipo_recurso, sub_tipo_recurso, clasificacion,
                    operator_latest AS operator, well_fluid_latest AS well_fluid,
                    well_state_latest AS well_state, lift_method_latest AS lift_method,
-                   trajectory, name_marker, completion_type,
+                   trajectory, name_marker, trajectory_class, completion_type,
                    round(lon, 6) AS lon, round(lat, 6) AS lat,
                    profundidad AS depth_m,
                    first_prod_declared, first_prod_month, last_prod_month,
