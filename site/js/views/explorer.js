@@ -5,23 +5,49 @@
    chosen dimension, so removing a category from the filter never repaints the
    ones that remain. */
 
-import { query } from '../query.js';
+import { query, unsupportedFilters, unmatchedValues } from '../query.js';
 import { queryFilters } from '../state.js';
 import { compact, num, convert, units, toCSV, downloadCSV, CITATION, esc } from '../format.js';
 import { draw, baseOption, merge, lineSeries, areaSeries, makeScale, legendHTML }
   from '../charts.js';
 import { monthLabel } from '../store.js';
 
+/* Each break-down dimension names the cube that carries it.
+   'main'  — the start-up cube: basin, province, formation, operator, fluid,
+             trajectory, resource type/subtype.
+   'block' — the lazily-loaded block cube: every concession and field, plus the
+             name marker, at full cardinality.
+   Some dimensions exist in both; those are marked 'any' and never force a load. */
 const DIMENSIONS = [
-  ['cuenca', 'Basin'],
-  ['provincia', 'Province'],
-  ['formation', 'Formation'],
-  ['operator', 'Operator'],
-  ['well_fluid', 'Well fluid type'],
-  ['trajectory', 'Trajectory'],
-  ['tipo_recurso', 'Resource type'],
-  ['sub_tipo_recurso', 'Resource subtype'],
+  ['cuenca', 'Basin', 'any'],
+  ['area', 'Block / concession', 'block'],
+  ['yacimiento', 'Field', 'block'],
+  ['provincia', 'Province', 'main'],
+  ['formation', 'Formation', 'main'],
+  ['operator', 'Operator', 'any'],
+  ['well_fluid', 'Well fluid type', 'main'],
+  ['trajectory', 'Trajectory (measured)', 'any'],
+  ['name_marker', 'Well name marker', 'block'],
+  ['tipo_recurso', 'Resource type', 'main'],
+  ['sub_tipo_recurso', 'Resource subtype', 'main'],
 ];
+
+/** Dimensions only the block cube has. */
+const BLOCK_ONLY = new Set(['area', 'yacimiento', 'name_marker']);
+
+/**
+ * Choose the cube that can answer this question.
+ *
+ * Preference is for the main cube, because it is already in memory. The block
+ * cube is used when the break-down or any active filter needs a dimension only
+ * it carries. Whatever is chosen, anything it still cannot honour is reported to
+ * the reader rather than silently dropped.
+ */
+function pickSource(dim, filters) {
+  const needsBlock = BLOCK_ONLY.has(dim)
+    || Object.keys(filters).some(k => BLOCK_ONLY.has(k));
+  return needsBlock ? 'block' : 'cube';
+}
 
 let dim = 'cuenca';
 let stacked = true;
@@ -37,6 +63,7 @@ export function render(root, ctx) {
                 `<option value="${v}"${v === dim ? ' selected' : ''}>${l}</option>`).join('')}
             </select>
           </label>
+          <span id="ex-warn"></span>
           <span class="seg" role="group" aria-label="Chart style">
             <button id="ex-stack" aria-pressed="${stacked}">Stacked</button>
             <button id="ex-line" aria-pressed="${!stacked}">Lines</button>
@@ -69,8 +96,16 @@ export function render(root, ctx) {
       </section>
     </div>`;
 
-  root.querySelector('#ex-dim').addEventListener('change', (e) => {
-    dim = e.target.value; update(root, ctx);
+  root.querySelector('#ex-dim').addEventListener('change', async (e) => {
+    dim = e.target.value;
+    // A block/field breakdown needs the block cube; fetch it before rendering
+    // rather than drawing an empty chart and filling it in later.
+    if (BLOCK_ONLY.has(dim) && ctx.ensureBlockCube) {
+      root.querySelector('#ex-warn').textContent = 'loading block data…';
+      await ctx.ensureBlockCube();
+      root.querySelector('#ex-warn').textContent = '';
+    }
+    update(root, ctx);
   });
   root.querySelector('#ex-stack').addEventListener('click', () => {
     stacked = true; syncButtons(root); update(root, ctx);
@@ -90,20 +125,53 @@ function syncButtons(root) {
 
 let lastRows = [], lastCols = [];
 
+/** Human label for a filter/dimension key, for the warning line. */
+function labelOf(key) {
+  const d = DIMENSIONS.find(x => x[0] === key);
+  return d ? d[1] : key;
+}
+
 export function update(root, ctx) {
   const f = queryFilters('fecha');
   const label = DIMENSIONS.find(d => d[0] === dim)[1];
+  const src = pickSource(dim, f);
+
+  // If the chosen cube is the block one but it has not been fetched yet, or the
+  // combination cannot be served at all, say so instead of drawing a chart that
+  // quietly ignores part of the selection.
+  const warnEl = root.querySelector('#ex-warn');
+  if (src === 'block' && !ctx.block) {
+    warnEl.innerHTML = '';
+    if (ctx.ensureBlockCube) ctx.ensureBlockCube().then(() => update(root, ctx));
+    return;
+  }
+  const dropped = unsupportedFilters(src, f);
+  const unmatched = unmatchedValues(src, f);
+  const notes = [];
+  if (dropped.length) {
+    notes.push(`${esc(dropped.map(labelOf).join(', '))} `
+      + `${dropped.length > 1 ? 'are' : 'is'} not available at this breakdown, `
+      + `so the charts below ignore ${dropped.length > 1 ? 'them' : 'it'}`);
+  }
+  for (const [k, vals] of Object.entries(unmatched)) {
+    notes.push(`no production recorded for ${esc(labelOf(k))} `
+      + `“${esc(vals.slice(0, 3).join(', '))}”`);
+  }
+  warnEl.innerHTML = notes.length
+    ? `<span style="color:var(--s4)">⚠ ${notes.join('; ')}.</span>` : '';
 
   // Stable colour scale, seeded from the globally-ranked ordering computed at
   // boot — not from the current selection, and not alphabetically.
-  const scale = makeScale(ctx.order?.[dim] || ctx.cube.domain(dim).map(d => d.value));
+  const scale = makeScale(ctx.order?.[dim]
+    || (ctx.block && src === 'block' ? ctx.block : ctx.cube)
+         .domain(dim).map(d => d.value));
 
   for (const [id, measure, conv, unit] of [
     ['ex-oil', 'oil_m3', convert.oil, units.oil()],
     ['ex-gas', 'gas_e3m3', convert.gas, units.gas()],
   ]) {
     const rows = query({
-      source: 'cube', filters: f, groupBy: ['fecha', dim],
+      source: src, filters: f, groupBy: ['fecha', dim],
       measures: [{ as: 'v', col: measure, agg: 'sum' }],
     });
     const months = [...new Set(rows.map(r => r.fecha))].sort((a, b) => a - b);
@@ -141,7 +209,7 @@ export function update(root, ctx) {
 
   /* --- table ----------------------------------------------------------- */
   const agg = query({
-    source: 'cube', filters: f, groupBy: [dim],
+    source: src, filters: f, groupBy: [dim],
     measures: [
       { as: 'oil', col: 'oil_m3', agg: 'sum' },
       { as: 'gas', col: 'gas_e3m3', agg: 'sum' },

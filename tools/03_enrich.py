@@ -150,6 +150,28 @@ def main() -> int:
                 WHEN f.lateral_m >= {HORIZONTAL_M}   THEN 'Horizontal'
                 ELSE 'Vertical'
             END AS trajectory,
+
+            -- SECOND, INDEPENDENT LINE OF EVIDENCE ON TRAJECTORY.
+            --
+            -- Argentine well names carry a trajectory marker: `(h)` for
+            -- horizontal, `(d)` for direccional. It is a naming convention, not
+            -- a measurement, so it is kept in its own column rather than folded
+            -- into `trajectory` — one column, one source of evidence, and the
+            -- user decides what to trust.
+            --
+            -- It is worth having because it is accurate and because it reaches
+            -- wells the fracture table does not. Checked against the measured
+            -- trajectory over the 4,465 wells that have one:
+            --   99.1 % of measured horizontals carry (h)   (sensitivity)
+            --   97.1 % of wells carrying (h) are horizontal (precision)
+            -- and it resolves 393 wells of unknown trajectory as probably
+            -- horizontal, plus 2,656 as directional — including 925 that the
+            -- 500 m rule lumps into "Vertical" but which are actually deviated.
+            CASE
+                WHEN w.sigla ILIKE '%(h)%' THEN '(h) horizontal'
+                WHEN w.sigla ILIKE '%(d)%' THEN '(d) directional'
+                ELSE 'Not indicated'
+            END AS name_marker,
             -- Completion intensity. Guarded with nullif so a zero lateral or a
             -- zero stage count yields NULL (undefined) instead of a division
             -- error or a misleading infinity.

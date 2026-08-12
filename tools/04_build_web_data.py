@@ -65,27 +65,20 @@ def main() -> int:
     SITE.mkdir(parents=True, exist_ok=True)
 
     # ------------------------------------------------------------------ 0 --
-    # Top-N maps. High-cardinality dimensions are capped so the cube does not
-    # explode: 700-odd operators would multiply the row count without anyone
-    # ever filtering on the 400th. Ranking is by cumulative oil-equivalent, so
-    # "Other" is genuinely the tail and not an arbitrary alphabetical cut.
-    print("ranking high-cardinality dimensions …")
-    con.execute(f"""
-        CREATE OR REPLACE TABLE dim_operator AS
-        SELECT operator_latest AS name,
-               row_number() OVER (ORDER BY sum(coalesce(cum_oil_m3,0)
-                                             + coalesce(cum_gas_e3m3,0)) DESC) AS rnk
-        FROM well_attrs WHERE operator_latest IS NOT NULL
-        GROUP BY 1 QUALIFY rnk <= {B['top_n_operators']}
-    """)
-    con.execute(f"""
-        CREATE OR REPLACE TABLE dim_formation AS
-        SELECT formprod AS name,
-               row_number() OVER (ORDER BY sum(coalesce(cum_oil_m3,0)
-                                             + coalesce(cum_gas_e3m3,0)) DESC) AS rnk
-        FROM well_attrs WHERE formprod IS NOT NULL
-        GROUP BY 1 QUALIFY rnk <= {B['top_n_formations']}
-    """)
+    # NO TOP-N CAPS. This was a real defect, not a tuning choice.
+    #
+    # Operator and formation used to be capped (top 25 / top 30 by
+    # oil-equivalent) with the tail collapsed into "Other", on the assumption
+    # that nobody filters on the 400th operator. But the filter bar offers all
+    # 125 operators, because it builds its lists from the well table. Selecting
+    # one outside the cap therefore matched nothing in the cube and the Explorer
+    # drew an EMPTY chart — not a wrong chart, but an unexplained blank, which is
+    # its own kind of lie. Found by a user asking about Capex S.A., which sits
+    # outside the top 25.
+    #
+    # Removing the caps costs 296,154 -> 396,278 rows and 4.47 -> 4.75 MB. That
+    # is a small price for "every value the filter bar offers actually works",
+    # and the cardinalities are modest anyway: 125 operators, 79 formations.
 
     # ------------------------------------------------------------------ 1 --
     # Tier B, part 1: the cube.
@@ -104,8 +97,8 @@ def main() -> int:
             p.fecha,
             a.cuenca, a.provincia,
             a.tipo_recurso, a.sub_tipo_recurso,
-            coalesce(fo.name, 'Other')  AS formation,
-            coalesce(op.name, 'Other')  AS operator,
+            coalesce(a.formprod, 'No informado')        AS formation,
+            coalesce(p.operator_asof, 'No informado')   AS operator,
             coalesce(p.well_fluid_asof, 'No informado') AS well_fluid,
             a.trajectory,
             count(DISTINCT p.idpozo)                            AS wells,
@@ -118,8 +111,6 @@ def main() -> int:
             sum(p.tef)       AS effective_hours
         FROM prod_monthly p
         JOIN well_attrs a USING (idpozo)
-        LEFT JOIN dim_operator  op ON op.name = p.operator_asof
-        LEFT JOIN dim_formation fo ON fo.name = a.formprod
         GROUP BY ALL
     """)
     cube_rows = con.execute("SELECT count(*) FROM agg_monthly").fetchone()[0]
@@ -167,11 +158,108 @@ def main() -> int:
         TO '{(SITE / 'agg_monthly.parquet').as_posix()}'
         (FORMAT parquet, COMPRESSION zstd, ROW_GROUP_SIZE 100000)
     """)
+    # dims.json is written once, AFTER every cube has contributed its label
+    # tables — writing it here, before the block cube adds its own, shipped a
+    # sidecar with no block labels in it. The block cube then decoded to a
+    # dictionary of zero entries, every value looked absent, and the Explorer
+    # correctly reported "no production recorded for Basin NEUQUINA".
+    # See the write further down, after section 1b.
+
+    # ----------------------------------------------------------------- 1b --
+    # Tier B, part 1b: the BLOCK cube.
+    #
+    # WHY A SECOND CUBE INSTEAD OF MORE DIMENSIONS ON THE FIRST
+    # ---------------------------------------------------------
+    # People ask about a concession by name — "how do Capex's wells in Agua del
+    # Cajón look" — so `area` has to be filterable, and a time series has to be
+    # breakable down by it. The obvious move is to add it to the main cube.
+    # Measured, that is a bad trade:
+    #
+    #   main cube today                        296,154 rows   4.48 MB
+    #   + area (top-80) + name_marker          596,723 rows   ~9 MB   (2.01x)
+    #   one cube with everything, no top-N   1,137,227 rows  11.67 MB (3.84x)
+    #
+    # Decode scales with rows, so that doubles the start-up cost we spent real
+    # effort removing — and the top-80 cut would still collapse 375 of the 455
+    # blocks into "Other", so the question that motivated it still could not be
+    # asked of most blocks.
+    #
+    # A cube with only the dimensions a block breakdown needs is 345,854 rows /
+    # 4.14 MB and keeps ALL 455 blocks and 1,182 fields. It is fetched only when
+    # a block or field is actually used, so it costs nothing at start-up. Both
+    # cubes reconcile to the same total oil to 0.000 %.
+    print("building agg_block (block/field cube) …")
+    con.execute("""
+        CREATE OR REPLACE TABLE agg_block AS
+        SELECT
+            p.fecha, a.cuenca, a.area, a.yacimiento,
+            coalesce(p.operator_asof, 'No informado') AS operator,
+            a.trajectory, a.name_marker,
+            count(DISTINCT p.idpozo) AS wells,
+            count(DISTINCT p.idpozo) FILTER (
+                WHERE coalesce(p.prod_pet,0) + coalesce(p.prod_gas,0) > 0) AS wells_producing,
+            sum(p.prod_pet)  AS oil_m3,
+            sum(p.prod_gas)  AS gas_e3m3,
+            sum(p.prod_agua) AS water_m3
+        FROM prod_monthly p
+        JOIN well_attrs a USING (idpozo)
+        WHERE a.area IS NOT NULL
+        GROUP BY ALL
+    """)
+    block_rows = con.execute("SELECT count(*) FROM agg_block").fetchone()[0]
+    print(f"  block cube rows: {block_rows:,}")
+
+    BLOCK_DIMS = ["cuenca", "area", "yacimiento", "operator", "trajectory",
+                  "name_marker"]
+    for d in BLOCK_DIMS:
+        vals = [r[0] for r in con.execute(
+            f"SELECT DISTINCT {d} FROM agg_block WHERE {d} IS NOT NULL "
+            f"ORDER BY {d}").fetchall()]
+        dims[f"block_{d}"] = vals
+        con.execute(f"CREATE OR REPLACE TABLE blockmap_{d} AS "
+                    f"SELECT * FROM (VALUES " +
+                    ",".join(f"(?, {i})" for i in range(len(vals))) +
+                    f") AS t(val, code)", vals)
+
+    bjoins = " ".join(
+        f"LEFT JOIN blockmap_{d} m_{d} ON m_{d}.val = c.{d}" for d in BLOCK_DIMS)
+    bcols = ", ".join(
+        f"coalesce(m_{d}.code, -1)::INTEGER AS {d}" for d in BLOCK_DIMS)
+    con.execute(f"""
+        COPY (
+            SELECT c.fecha, {bcols},
+                   c.wells, c.wells_producing, c.oil_m3, c.gas_e3m3, c.water_m3
+            FROM agg_block c {bjoins}
+            ORDER BY c.fecha, c.cuenca, c.area
+        )
+        TO '{(SITE / 'agg_block.parquet').as_posix()}'
+        (FORMAT parquet, COMPRESSION zstd, ROW_GROUP_SIZE 100000)
+    """)
+
+    # Both cubes must describe the same production. If they diverge, one of the
+    # joins has gone wrong and every block-level number would be quietly off.
+    m_oil, b_oil = con.execute("""
+        SELECT (SELECT sum(oil_m3) FROM agg_monthly),
+               (SELECT sum(oil_m3) FROM agg_block)""").fetchone()
+    drift = (b_oil - m_oil) / m_oil * 100
+    print(f"  block cube vs main cube oil: {drift:+.6f}%  "
+          f"{'OK' if abs(drift) < 1e-6 else 'MISMATCH'}")
+    if abs(drift) >= 1e-6:
+        print("  (wells with no `area` are excluded from the block cube by "
+              "design; a non-zero drift here means something else is wrong)",
+              file=sys.stderr)
+
+    # Now that both cubes have registered their label tables, ship the sidecar.
     (SITE / "dims.json").write_text(
         json.dumps(dims, separators=(",", ":"), ensure_ascii=False),
         encoding="utf-8")
-    print(f"  dimension labels: {sum(len(v) for v in dims.values())} values, "
+    print(f"  dimension labels: {sum(len(v) for v in dims.values())} values "
+          f"across {len(dims)} dimensions, "
           f"{(SITE / 'dims.json').stat().st_size / 1024:.1f} KB")
+    missing_labels = [k for k, v in dims.items() if not v]
+    if missing_labels:
+        print(f"  ERROR: empty label tables for {missing_labels}", file=sys.stderr)
+        return 1
 
     # ------------------------------------------------------------------ 2 --
     # Tier B, part 2: one row per well. This drives the map, the well-level
@@ -185,7 +273,7 @@ def main() -> int:
                    tipo_recurso, sub_tipo_recurso, clasificacion,
                    operator_latest AS operator, well_fluid_latest AS well_fluid,
                    well_state_latest AS well_state, lift_method_latest AS lift_method,
-                   trajectory, completion_type,
+                   trajectory, name_marker, completion_type,
                    round(lon, 6) AS lon, round(lat, 6) AS lat,
                    profundidad AS depth_m,
                    first_prod_declared, first_prod_month, last_prod_month,
@@ -404,6 +492,9 @@ def main() -> int:
         ("agg_monthly.parquet (tier B)", agg.stat().st_size, 8 * 1_048_576,
          f"{cube_rows:,} rows"),
         ("wells_slim.parquet (tier B)", wells_p.stat().st_size, 5 * 1_048_576, ""),
+        ("agg_block.parquet (tier B, lazy)",
+         (SITE / "agg_block.parquet").stat().st_size, 6 * 1_048_576,
+         f"{block_rows:,} rows, all 455 blocks"),
         ("typecurve.parquet (tier B)", (SITE / "typecurve.parquet").stat().st_size,
          3 * 1_048_576, f"{tc_rows:,} rows"),
         (f"wells/ (tier C, {tier_c_buckets} buckets)", tier_c_total,
@@ -437,6 +528,9 @@ def main() -> int:
                                     "rows": cube_rows, "sha256": sha256(agg)},
             "wells_slim.parquet": {"bytes": wells_p.stat().st_size,
                                    "sha256": sha256(wells_p)},
+            "agg_block.parquet": {"bytes": (SITE / "agg_block.parquet").stat().st_size,
+                                  "rows": block_rows,
+                                  "sha256": sha256(SITE / "agg_block.parquet")},
             "typecurve.parquet": {"bytes": (SITE / "typecurve.parquet").stat().st_size,
                                   "rows": tc_rows,
                                   "sha256": sha256(SITE / "typecurve.parquet")},

@@ -30,10 +30,13 @@ const VIEWS = {
 const FACETS = [
   ['cuenca', 'Basin', 'wells'],
   ['provincia', 'Province', 'wells'],
+  ['area', 'Block / concession', 'wells'],
+  ['yacimiento', 'Field', 'wells'],
   ['formation', 'Formation', 'wells'],
   ['operator', 'Operator', 'wells'],
   ['well_fluid', 'Oil / gas well', 'wells'],
-  ['trajectory', 'Trajectory', 'wells'],
+  ['trajectory', 'Trajectory (measured)', 'wells'],
+  ['name_marker', 'Well name marker', 'wells'],
   ['tipo_recurso', 'Resource type', 'wells'],
   ['sub_tipo_recurso', 'Shale / tight', 'wells'],
 ];
@@ -50,11 +53,14 @@ const WELLS_CORE = {
   idpozo: 'num', cuenca: 'cat', provincia: 'cat', formation: 'cat',
   operator: 'cat', well_fluid: 'cat', trajectory: 'cat',
   tipo_recurso: 'cat', sub_tipo_recurso: 'cat',
+  // area / yacimiento / name_marker are here rather than in DETAIL because the
+  // filter bar is built at boot, and a facet that appears only after you visit
+  // some other view first is worse than the ~110 ms each costs to decode.
+  area: 'cat', yacimiento: 'cat', name_marker: 'cat',
 };
 
 const WELLS_DETAIL = {
-  sigla: 'cat', area: 'cat', yacimiento: 'cat', well_state: 'cat',
-  completion_type: 'cat',
+  sigla: 'cat', well_state: 'cat', completion_type: 'cat',
   lon: 'num', lat: 'num', depth_m: 'num', producing_months: 'num',
   first_prod_month: 'date', last_prod_month: 'date',
   cum_oil_m3: 'num', cum_gas_e3m3: 'num', cum_water_m3: 'num',
@@ -83,6 +89,34 @@ ctx.ensureWellDetail = async () => {
   return wellDetailPromise;
 };
 
+/* The block cube — every concession and field, no top-N cut. Loaded only when a
+   block or field is actually used, which is why it can afford full cardinality:
+   see the sizing note in tools/04_build_web_data.py. */
+let blockCubePromise = null;
+ctx.ensureBlockCube = async () => {
+  if (!blockCubePromise) {
+    blockCubePromise = (async () => {
+      const { loadTable } = await import('./store.js');
+      const { registerSource } = await import('./query.js');
+      const d = ctx.dims;
+      const coded = (n) => ({ labels: d[`block_${n}`] || [] });
+      const t = await loadTable('data/agg_block.parquet', {
+        fecha: 'date',
+        cuenca: coded('cuenca'), area: coded('area'),
+        yacimiento: coded('yacimiento'), operator: coded('operator'),
+        trajectory: coded('trajectory'), name_marker: coded('name_marker'),
+        wells: 'num', wells_producing: 'num',
+        oil_m3: 'num', gas_e3m3: 'num', water_m3: 'num',
+      });
+      registerSource('block', t);
+      ctx.block = t;
+      computeOrderFor(t, ['area', 'yacimiento', 'name_marker']);
+      return t;
+    })();
+  }
+  return blockCubePromise;
+};
+
 let cubeDetailPromise = null;
 ctx.ensureCubeDetail = async () => {
   if (!cubeDetailPromise) {
@@ -100,8 +134,9 @@ ctx.ensureCubeDetail = async () => {
 /** Rank a dimension's values by total oil-equivalent, over the whole dataset.
  *  Stable across filters — that is what stops a filter repainting the series
  *  that survive it. */
-function computeOrder(dims) {
-  const cube = ctx.cube;
+function computeOrder(dims) { computeOrderFor(ctx.cube, dims); }
+
+function computeOrderFor(cube, dims) {
   const oil = cube.cols.oil_m3.values, gas = cube.cols.gas_e3m3.values;
   for (const dim of dims) {
     const col = cube.cols[dim];
@@ -358,6 +393,7 @@ async function boot() {
   // small sidecar, so decoding them is a copy rather than 2.4 million string
   // materialisations. dims.json is a few kilobytes and arrives with summary.
   const dims = await loadJSON('data/dims.json');
+  ctx.dims = dims;
   const coded = (name) => ({ labels: dims[name] || [] });
 
   /* The cube is split for the same reason wells_slim is, and the measurement

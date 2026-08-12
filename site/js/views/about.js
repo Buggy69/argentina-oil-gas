@@ -87,6 +87,24 @@ export async function render(root, ctx) {
         “horizontal versus vertical” is really a comparison within the
         unconventional population.</p>
 
+        <h3>Two independent facets describe trajectory — on purpose</h3>
+        <p><strong>Trajectory (measured)</strong> comes from the reported lateral
+        length in the fracture filings. <strong>Well name marker</strong> comes
+        from Argentina's naming convention, where <code>(h)</code> means
+        horizontal and <code>(d)</code> directional. They are kept apart because
+        one is a measurement and one is an inference, and you should be able to
+        see which you are relying on.</p>
+        <p>The naming convention is accurate — over the 4,465 wells that have a
+        measured trajectory, 99.1% of horizontals carry <code>(h)</code>, and
+        97.1% of wells carrying <code>(h)</code> are horizontal. It also reaches
+        wells the fracture table does not: it identifies <strong>393 wells of
+        unknown trajectory as probably horizontal</strong> and 2,656 as
+        directional. Combine the two facets — "Trajectory = Unknown" plus "name
+        marker = (h)" — to find exactly those.</p>
+        <p>It also exposes a limit of the 500 m rule: <strong>925 wells this site
+        labels "Vertical" are named directional.</strong> Deviated is not
+        vertical, and the measured facet cannot tell them apart.</p>
+
         <h3>An <code>idpozo</code> is not a wellbore</h3>
         <p>It identifies a wellbore <em>×</em> producing formation. A well
         producing from two formations appears twice. Counts on this site are

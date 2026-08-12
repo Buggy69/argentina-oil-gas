@@ -46,6 +46,47 @@ export function getSource(name) {
  * naming a value that does not exist in this table yields an empty set, which
  * correctly matches nothing.
  */
+/**
+ * Which of these filters this source cannot honour.
+ *
+ * This exists because the alternative is silent wrongness. A filter naming a
+ * column the table does not have used to be skipped quietly, so selecting a
+ * concession and watching a national time series not move looked like "this
+ * block is most of the basin" rather than "that filter did nothing". Callers ask
+ * this first and tell the user, or route to a source that does have the column.
+ */
+export function unsupportedFilters(source, filters = {}) {
+  const table = getSource(source);
+  return Object.entries(filters)
+    .filter(([name, sel]) =>
+      sel != null && (!Array.isArray(sel) || sel.length > 0) && !table.cols[name])
+    .map(([name]) => name);
+}
+
+/**
+ * Selected values that exist in the filter bar but not in this source.
+ *
+ * The subtler sibling of the above, and the one that actually bit: the column
+ * was present, the *value* was not, so the filter matched zero rows and the
+ * chart came out blank with no explanation. That happened because the filter
+ * lists are built from the well table while the charts read a cube, and the cube
+ * used to fold rare operators into "Other". The caps are gone, but the check
+ * stays — it is cheap, and it turns a future regression of that class into a
+ * visible message instead of an empty canvas.
+ */
+export function unmatchedValues(source, filters = {}) {
+  const table = getSource(source);
+  const out = {};
+  for (const [name, sel] of Object.entries(filters)) {
+    if (!Array.isArray(sel) || !sel.length) continue;
+    const col = table.cols[name];
+    if (!col || col.kind !== 'cat') continue;
+    const missing = sel.filter(v => !col.dict.includes(String(v)));
+    if (missing.length) out[name] = missing;
+  }
+  return out;
+}
+
 export function buildMask(table, filters = {}) {
   const n = table.n;
   const mask = new Uint8Array(n).fill(1);
@@ -55,7 +96,13 @@ export function buildMask(table, filters = {}) {
     if (Array.isArray(sel)) {
       if (sel.length === 0) continue;           // empty selection = no constraint
       const col = table.cols[name];
-      if (!col) continue;                        // not a dimension of this source
+      if (!col) {
+        // Not a dimension of this source. Loud in development, because a
+        // silently-ignored filter shows plausible-looking wrong numbers.
+        console.warn(`[query] filter "${name}" ignored: not a column of this `
+          + `source. Use unsupportedFilters() to surface this to the user.`);
+        continue;
+      }
       if (col.kind !== 'cat') continue;
       const allowed = new Set();
       for (const v of sel) {
