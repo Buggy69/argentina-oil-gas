@@ -92,7 +92,9 @@ unconventional wells, ~1% of conventional).
 
 | Field | Rule |
 |---|---|
-| **`trajectory`** **[derived]** | no fracture record → `Unknown`; lateral ≥ 500 m → `Horizontal`; else `Vertical`. The 500 m cut sits inside an almost empty corridor in the distribution — only 20 of 4,604 wells fall between 150 m and 600 m — so the classification is insensitive to it. **Never imputed for wells without a record.** |
+| **`trajectory`** **[derived]** | The **measurement only**. No fracture record → `Unknown`; lateral ≥ 500 m → `Horizontal`; else `Vertical`. The 500 m cut sits inside an almost empty corridor in the distribution — only 20 of 4,604 wells fall between 150 m and 600 m — so the classification is insensitive to it. **Never imputed.** |
+| **`name_marker`** **[derived]** | From the well name (`sigla`), which encodes trajectory by Argentine convention: `(h) horizontal`, `(d) directional`, `Not indicated`. A convention, not a measurement — hence its own column. Over the 4,465 wells with a measured trajectory it is **99.1% sensitive and 97.1% precise** for horizontals. |
+| **`trajectory_class`** **[derived]** | The **best available answer**, combining the two above. Measurement wins wherever it exists; the name speaks only for wells with no fracture record: measured ≥ 500 m → `Horizontal` (2,426); measured short + named `(d)` → `Directional` (925); measured short otherwise → `Vertical` (1,114); no record + `(h)` → `Horizontal` (393); no record + `(d)` → `Directional` (2,656); else `Unknown` (77,903). Note a measured well named `(h)` with a short reported lateral stays with the measurement — lateral length is evidence, a name is a convention. |
 | `lateral_m` **[derived]** | `max` across jobs — a property of the wellbore, so it does not sum |
 | `stages`, `proppant_t`, `frac_water_m3` **[derived]** | `sum` across jobs — consumed per job, so they do |
 | `max_pressure_psi` **[derived]** | `max` across jobs — an observed peak |
@@ -105,6 +107,20 @@ unconventional wells, ~1% of conventional).
 | `well_fluid_asof` **[derived]** | `tipopozo` in force that month, by ASOF join (events record only transitions) |
 | `operator_latest` **[derived]** | most recent operator — a different question, and a different answer |
 | `tef` (in `prod_monthly`) **[derived]** | clamped to the hours available in the month; five source rows exceed it, worst case 3,058 h |
+
+## Language
+
+Source values are Spanish and **that is what is stored, filtered on, written to
+the URL and written to a CSV export**. The dashboard appends an English gloss for
+display only — `NO CONVENCIONAL (Unconventional)`, `Bombeo Mecánico (Rod pump)` —
+so a figure checked against the publisher still matches. The gloss table is
+`site/js/i18n.js`.
+
+Place names are not translated: provinces, fields (`yacimiento`) and concessions
+(`area`) are toponyms. Formation codes are paired with the registry's own
+spelled-out name from `formacion`, so `VMUT` displays as `VMUT (Vaca Muerta)`;
+all 77 codes map 1:1, and the pairs are emitted by the build rather than
+hand-written.
 
 ## Statistical conventions
 

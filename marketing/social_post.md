@@ -64,11 +64,16 @@ own redundant columns rather than assumed.
 
 **What it does not claim**
 
-Trajectory is not in the production data at all. It is derived from reported
-lateral length, which makes it a measurement — but only for wells that filed a
-fracture. **94.8% of wells are marked *Unknown*, and nothing is imputed.** Every
-horizontal-versus-vertical comparison above is really a comparison inside the
-unconventional population, and the page says so.
+Trajectory is not in the production data at all. It is reconstructed from two
+sources — reported lateral length in the fracture filings, and the naming
+convention that marks wells `(h)` horizontal or `(d)` directional. That gives
+2,819 horizontal, 3,581 directional and 1,114 vertical wells, and leaves
+**77,903 (91.2%) genuinely *Unknown*, which are left Unknown rather than
+imputed.** The measurement always wins where it exists; the name speaks only for
+wells with no fracture record, and both are exposed as separate filters so you
+can see which evidence any number rests on. Every horizontal-versus-vertical
+comparison above is really a comparison inside the unconventional population, and
+the page says so.
 
 Likewise: `idpozo` is a wellbore **×** producing formation, not a wellbore. A
 missing month is null, not zero. And the source's real defects — negative volumes
@@ -100,7 +105,7 @@ in Dec 2025**. Median cumulative oil is 37,000 m³ per horizontal well against
 on `idpozo`, so intensity against realised production is one chart.
 
 Reconciled to the publisher's own monthly series within 0.4% per basin, and it
-says plainly which 94.8% of wells have unknown trajectory rather than guessing.
+says plainly which 91.2% of wells have unknown trajectory rather than guessing.
 
 Runs entirely in your browser — no server, no login. Open source, public data.
 Personal project, not an SLB product.
