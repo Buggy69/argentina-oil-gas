@@ -207,7 +207,20 @@ table.data th { color: var(--ink-2); font-weight: 600; position: sticky; top: 0;
 .legend { display: flex; flex-wrap: wrap; gap: 12px; font-size: 12px;
   color: var(--ink-2); margin-top: 10px; }
 .legend .key { display: inline-flex; align-items: center; gap: 6px; }
-.legend .swatch { width: 11px; height: 11px; border-radius: 3px; display: inline-block; }
+.legend .swatch { width: 11px; height: 11px; border-radius: 3px; display: inline-block;
+  flex: 0 0 auto; }
+
+/* Toggle legend: each key is a button, so it needs a hit target that works with
+   a thumb, not just a mouse. */
+.legend-toggle .key {
+  background: var(--plane); border: 1px solid var(--hairline);
+  border-radius: 999px; padding: 6px 11px; min-height: 34px;
+  font: inherit; font-size: 12px; color: var(--ink-2); cursor: pointer;
+}
+.legend-toggle .key:hover { border-color: var(--axis); color: var(--ink-1); }
+.legend-toggle .key:focus-visible { outline: 2px solid var(--s1); outline-offset: 2px; }
+.legend-toggle .key .count { color: var(--ink-muted); font-size: 11px;
+  font-variant-numeric: tabular-nums; }
 
 .controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
   margin-bottom: 12px; font-size: 13px; color: var(--ink-2); }

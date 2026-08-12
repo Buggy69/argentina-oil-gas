@@ -55,6 +55,11 @@ let colorBy = 'trajectory_class';
 let highlight = null;
 let sizeBy = 'cum_oil_m3';
 
+/* Classes switched off in the legend. Module-level so the choice survives a
+   filter change or a re-render; cleared when the colour dimension changes,
+   because the class names mean something different then. */
+let hiddenClasses = new Set();
+
 export async function render(root, ctx) {
   await ensureBasemap();
   root.innerHTML = `
@@ -95,7 +100,19 @@ export async function render(root, ctx) {
     </div>`;
 
   root.querySelector('#mp-color').addEventListener('change', e => {
-    colorBy = e.target.value; highlight = null; update(root, ctx);
+    colorBy = e.target.value; highlight = null;
+    hiddenClasses = new Set();   // class names belong to the old dimension
+    update(root, ctx);
+  });
+
+  // Legend doubles as the visibility control. Delegated so it survives the
+  // legend being re-rendered on every update.
+  root.querySelector('#mp-legend').addEventListener('click', (e) => {
+    const key = e.target.closest('[data-class]')?.dataset.class;
+    if (key == null) return;
+    if (hiddenClasses.has(key)) hiddenClasses.delete(key);
+    else hiddenClasses.add(key);
+    update(root, ctx);
   });
   root.querySelector('#mp-size').addEventListener('change', e => {
     sizeBy = e.target.value; update(root, ctx);
@@ -186,9 +203,19 @@ export function update(root, ctx) {
     return (i >= 0 && i < 3) ? pal[i] : OTHER_GREY();
   };
 
-  // Coloured classes first, then the neutral ones — the legend reads as
-  // "these are the kinds, and this is the remainder".
-  const keys = order.concat([...classes.keys()].filter(k => NEUTRAL.has(k)));
+  /* DRAW ORDER: neutral underneath, classified on top.
+     ECharts paints series in array order, so whatever comes last wins the
+     pixel. Putting the neutral classes last meant 77,903 grey "Unknown" wells
+     were painted over the 7,514 wells whose trajectory is actually known —
+     burying the entire point of colouring by trajectory. The legend still reads
+     kinds-then-remainder; only the painting order is reversed. */
+  const neutralKeys = [...classes.keys()].filter(k => NEUTRAL.has(k));
+  const legendKeys = order.concat(neutralKeys);   // reading order
+  const drawKeys = neutralKeys.concat(order);     // painting order, back to front
+
+  // Classes the reader has switched off. Kept across re-renders so a filter
+  // change does not silently bring a hidden class back.
+  const visibleKeys = drawKeys.filter(k => !hiddenClasses.has(k));
 
   // `large: true` is ECharts' fast path for huge scatters, but it renders every
   // point at ONE size — a function symbolSize is silently ignored and, worse,
@@ -196,7 +223,7 @@ export function update(root, ctx) {
   // the same size anyway; otherwise progressive rendering, which still streams
   // 84 k points onto the canvas in chunks without blocking.
   const uniform = sizeCol == null;
-  const series = keys.map(k => ({
+  const series = visibleKeys.map(k => ({
     name: k, type: 'scatter',
     coordinateSystem: 'geo',      // plot in lon/lat against the basemap
     ...(uniform
@@ -249,9 +276,11 @@ export function update(root, ctx) {
     ],
   };
 
-  const shown = idx.length - missing - outside;
+  const plottable = idx.length - missing - outside;
+  const shown = visibleKeys.reduce((a, k) => a + (classes.get(k)?.length ?? 0), 0);
+  const hiddenCount = plottable - shown;
   root.querySelector('#mp-note').innerHTML =
-    `${num(shown)} wells plotted${missing ? `, ${num(missing)} omitted for having no coordinate` : ''}${outside ? `, ${num(outside)} omitted for plotting outside Argentina` : ''}.
+    `${num(shown)} wells plotted${hiddenCount ? `, ${num(hiddenCount)} hidden by the legend` : ''}${missing ? `, ${num(missing)} omitted for having no coordinate` : ''}${outside ? `, ${num(outside)} omitted for plotting outside Argentina` : ''}.
      Marker area is proportional to ${sizeBy === 'none' ? 'nothing (uniform)' :
      esc(({ cum_oil_m3: 'cumulative oil', cum_gas_e3m3: 'cumulative gas',
             lateral_m: 'lateral length' })[sizeBy])}.
@@ -281,6 +310,26 @@ export function update(root, ctx) {
     series,
   }));
 
-  root.querySelector('#mp-legend').innerHTML = legendHTML(
-    keys.map(k => ({ label: esc(i18nLabel(colorBy, k)), color: colorOf(k) })));
+  /* An interactive legend, not a caption.
+     Each entry is a real button with aria-pressed, so it is reachable by
+     keyboard and announced correctly; a switched-off class keeps its swatch
+     outline so you can still see which colour you are bringing back. */
+  root.querySelector('#mp-legend').innerHTML =
+    `<div class="legend legend-toggle">` + legendKeys.map(k => {
+      const on = !hiddenClasses.has(k);
+      const c = colorOf(k);
+      const n = classes.get(k)?.length ?? 0;
+      return `<button type="button" class="key" data-class="${esc(k)}"
+                aria-pressed="${on}" title="${on ? 'Hide' : 'Show'} ${esc(k)}">
+        <span class="swatch" style="${on ? `background:${c}`
+          : `background:transparent;box-shadow:inset 0 0 0 2px ${c}`}"></span>
+        <span${on ? '' : ' style="opacity:.5;text-decoration:line-through"'}>${
+          esc(i18nLabel(colorBy, k))}</span>
+        <span class="count">${num(n)}</span>
+      </button>`;
+    }).join('') + `</div>
+    <p class="source" style="margin-top:6px">Click a class to show or hide it.
+      Unknown wells are drawn underneath the classified ones, but there are
+      ${num(classes.get('Unknown')?.length ?? 0)} of them — switching them off is
+      the quickest way to read the rest.</p>`;
 }
