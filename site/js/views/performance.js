@@ -8,12 +8,12 @@
 
    The band is P10–P90 with P50 drawn on top. P10 is the LOW value. */
 
-import { query, getSource, selectRows, valueAt } from '../query.js?v=6b4b1dff4b';
-import { queryFilters } from '../state.js?v=6b4b1dff4b';
-import { compact, num, convert, units, esc } from '../format.js?v=6b4b1dff4b';
+import { query, getSource, selectRows, valueAt } from '../query.js?v=a9872ab70a';
+import { queryFilters } from '../state.js?v=a9872ab70a';
+import { compact, num, convert, units, esc } from '../format.js?v=a9872ab70a';
 import { draw, baseOption, merge, lineSeries, makeScale, legendHTML, palette }
-  from '../charts.js?v=6b4b1dff4b';
-import { label as i18nLabel } from '../i18n.js?v=6b4b1dff4b';
+  from '../charts.js?v=a9872ab70a';
+import { label as i18nLabel } from '../i18n.js?v=a9872ab70a';
 
 let splitBy = 'trajectory';
 let fluid = 'oil';
@@ -266,11 +266,6 @@ export function update(root, ctx) {
     legendHTML([...groups.keys()].map(k => ({ label: esc(i18nLabel('trajectory', k)), color: colorOf(k) })));
 
   /* --- top wells -------------------------------------------------------- */
-  const ranked = idx
-    .map(i => ({ i, oil: wells.cols.cum_oil_m3.values[i] }))
-    .filter(r => Number.isFinite(r.oil))
-    .sort((a, b) => b.oil - a.oil).slice(0, 30);
-
   const SORTS = {
     sigla: (i) => valueAt(wells, 'sigla', i) ?? '',
     cuenca: (i) => valueAt(wells, 'cuenca', i) ?? '',
@@ -318,7 +313,7 @@ export function update(root, ctx) {
     const id = Number(tr.dataset.idpozo);
     const el = root.querySelector('#pf-well');
     el.classList.add('is-busy');
-    const { loadWellHistory, monthLabel } = await import('../store.js?v=6b4b1dff4b');
+    const { loadWellHistory, monthLabel } = await import('../store.js?v=a9872ab70a');
     // One whole-file GET of the well's bucket — see store.js. The bucket is
     // cached, so opening a second well from the same bucket costs nothing.
     const hist = await loadWellHistory(id);
