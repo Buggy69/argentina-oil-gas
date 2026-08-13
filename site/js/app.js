@@ -9,21 +9,21 @@
    page is useful on a phone in about a second instead of after seven megabytes.
    =========================================================================== */
 
-import { loadTable, loadJSON, monthLabel } from './store.js';
-import { registerSource, getSource } from './query.js';
+import { loadTable, loadJSON, monthLabel } from './store.js?v=6b4b1dff4b';
+import { registerSource, getSource } from './query.js?v=6b4b1dff4b';
 import { state, onChange, readHash, setView, toggleFilter, clearFilters,
-         setOilfield, setMonthRange, activeFilterCount } from './state.js';
-import { setOilfieldUnits, units, num, esc } from './format.js';
-import { label, setFormationNames } from './i18n.js';
-import { resizeAll, disposeAll } from './charts.js';
+         setOilfield, setMonthRange, activeFilterCount } from './state.js?v=6b4b1dff4b';
+import { setOilfieldUnits, units, num, esc } from './format.js?v=6b4b1dff4b';
+import { label, setFormationNames } from './i18n.js?v=6b4b1dff4b';
+import { resizeAll, disposeAll } from './charts.js?v=6b4b1dff4b';
 
 const VIEWS = {
-  overview:    () => import('./views/overview.js'),
-  explorer:    () => import('./views/explorer.js'),
-  map:         () => import('./views/map.js'),
-  statistics:  () => import('./views/statistics.js'),
-  performance: () => import('./views/performance.js'),
-  about:       () => import('./views/about.js'),
+  overview:    () => import('./views/overview.js?v=6b4b1dff4b'),
+  explorer:    () => import('./views/explorer.js?v=6b4b1dff4b'),
+  map:         () => import('./views/map.js?v=6b4b1dff4b'),
+  statistics:  () => import('./views/statistics.js?v=6b4b1dff4b'),
+  performance: () => import('./views/performance.js?v=6b4b1dff4b'),
+  about:       () => import('./views/about.js?v=6b4b1dff4b'),
 };
 
 /* Facets shown in the filter bar. `source` says which table the facet's domain
@@ -86,7 +86,7 @@ const ctx = { summary: null, cube: null, wells: null, typecurve: null,
 let wellDetailPromise = null;
 ctx.ensureWellDetail = async () => {
   if (!wellDetailPromise) {
-    const { extendTable } = await import('./store.js');
+    const { extendTable } = await import('./store.js?v=6b4b1dff4b');
     wellDetailPromise = extendTable(ctx.wells, 'data/wells_slim.parquet', WELLS_DETAIL);
   }
   return wellDetailPromise;
@@ -99,8 +99,8 @@ let blockCubePromise = null;
 ctx.ensureBlockCube = async () => {
   if (!blockCubePromise) {
     blockCubePromise = (async () => {
-      const { loadTable } = await import('./store.js');
-      const { registerSource } = await import('./query.js');
+      const { loadTable } = await import('./store.js?v=6b4b1dff4b');
+      const { registerSource } = await import('./query.js?v=6b4b1dff4b');
       const d = ctx.dims;
       const coded = (n) => ({ labels: d[`block_${n}`] || [] });
       const t = await loadTable('data/agg_block.parquet', {
@@ -128,8 +128,8 @@ let typecurvePromise = null;
 ctx.ensureTypecurve = async () => {
   if (!typecurvePromise) {
     typecurvePromise = (async () => {
-      const { loadTable } = await import('./store.js');
-      const { registerSource } = await import('./query.js');
+      const { loadTable } = await import('./store.js?v=6b4b1dff4b');
+      const { registerSource } = await import('./query.js?v=6b4b1dff4b');
       const d = ctx.dims;
       const coded = (n) => ({ labels: d[`tc_${n}`] || [] });
       const t = await loadTable('data/typecurve.parquet', {
@@ -153,7 +153,7 @@ let cubeDetailPromise = null;
 ctx.ensureCubeDetail = async () => {
   if (!cubeDetailPromise) {
     cubeDetailPromise = (async () => {
-      const { extendTable } = await import('./store.js');
+      const { extendTable } = await import('./store.js?v=6b4b1dff4b');
       await extendTable(ctx.cube, 'data/agg_monthly.parquet', CUBE_DETAIL);
       // The stable colour ordering needs the dimensions that just arrived.
       computeOrder(Object.keys(CUBE_DETAIL));
@@ -519,7 +519,7 @@ async function boot() {
      the reader can already use, rather than a wait they have to sit through. */
   if ((VIEWS[state.view] ? state.view : 'overview') === 'overview') {
     try {
-      const ov = await import('./views/overview.js');
+      const ov = await import('./views/overview.js?v=6b4b1dff4b');
       const main = document.getElementById('main');
       main.innerHTML = '';
       const root = document.createElement('div');

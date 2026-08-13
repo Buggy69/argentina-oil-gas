@@ -59,6 +59,24 @@ jobs:
           fi
           echo "publishing $(du -sh site | cut -f1) across $(find site -type f | wc -l) files"
 
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Stamp asset URLs with a content version
+        # GitHub Pages sends Cache-Control: max-age=600 and will not let us
+        # change it, so for ten minutes after a deploy a returning visitor keeps
+        # running the old JavaScript. A hard reload does not reliably fix it
+        # either: it re-fetches the entry script but commonly serves DYNAMIC
+        # imports from cache, so the shell updates while the views do not — the
+        # site then appears to ignore the deploy completely.
+        #
+        # Stamping every module URL with a hash of the code means the URL
+        # changes exactly when the code does, which no cache can survive. The
+        # hash ignores existing stamps, so an unchanged site produces an
+        # unchanged deploy.
+        run: python tools/07_stamp_version.py
+
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

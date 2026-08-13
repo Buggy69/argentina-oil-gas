@@ -8,12 +8,12 @@
 
    The band is P10–P90 with P50 drawn on top. P10 is the LOW value. */
 
-import { query, getSource, selectRows, valueAt } from '../query.js';
-import { queryFilters } from '../state.js';
-import { compact, num, convert, units, esc } from '../format.js';
+import { query, getSource, selectRows, valueAt } from '../query.js?v=6b4b1dff4b';
+import { queryFilters } from '../state.js?v=6b4b1dff4b';
+import { compact, num, convert, units, esc } from '../format.js?v=6b4b1dff4b';
 import { draw, baseOption, merge, lineSeries, makeScale, legendHTML, palette }
-  from '../charts.js';
-import { label as i18nLabel } from '../i18n.js';
+  from '../charts.js?v=6b4b1dff4b';
+import { label as i18nLabel } from '../i18n.js?v=6b4b1dff4b';
 
 let splitBy = 'trajectory';
 let fluid = 'oil';
@@ -318,7 +318,7 @@ export function update(root, ctx) {
     const id = Number(tr.dataset.idpozo);
     const el = root.querySelector('#pf-well');
     el.classList.add('is-busy');
-    const { loadWellHistory, monthLabel } = await import('../store.js');
+    const { loadWellHistory, monthLabel } = await import('../store.js?v=6b4b1dff4b');
     // One whole-file GET of the well's bucket — see store.js. The bucket is
     // cached, so opening a second well from the same bucket costs nothing.
     const hist = await loadWellHistory(id);

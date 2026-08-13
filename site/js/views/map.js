@@ -12,12 +12,12 @@
    in colour, the rest in grey — which carries the same information without
    asking hue to do work it cannot do safely. */
 
-import { getSource, selectRows, valueAt } from '../query.js';
-import { queryFilters, state } from '../state.js';
-import { num, compact, convert, units, esc } from '../format.js';
-import { draw, baseOption, merge, palette, OTHER_GREY, legendHTML } from '../charts.js';
-import { loadJSON } from '../store.js';
-import { label as i18nLabel } from '../i18n.js';
+import { getSource, selectRows, valueAt } from '../query.js?v=6b4b1dff4b';
+import { queryFilters, state } from '../state.js?v=6b4b1dff4b';
+import { num, compact, convert, units, esc } from '../format.js?v=6b4b1dff4b';
+import { draw, baseOption, merge, palette, OTHER_GREY, legendHTML } from '../charts.js?v=6b4b1dff4b';
+import { loadJSON } from '../store.js?v=6b4b1dff4b';
+import { label as i18nLabel } from '../i18n.js?v=6b4b1dff4b';
 
 /* The basemap is Argentina's 24 provinces, the national outline and the
    neighbouring countries, compiled into the site at build time from Natural

@@ -5,13 +5,13 @@
    chosen dimension, so removing a category from the filter never repaints the
    ones that remain. */
 
-import { query, unsupportedFilters, unmatchedValues } from '../query.js';
-import { queryFilters } from '../state.js';
-import { compact, num, convert, units, toCSV, downloadCSV, CITATION, esc } from '../format.js';
+import { query, unsupportedFilters, unmatchedValues } from '../query.js?v=6b4b1dff4b';
+import { queryFilters } from '../state.js?v=6b4b1dff4b';
+import { compact, num, convert, units, toCSV, downloadCSV, CITATION, esc } from '../format.js?v=6b4b1dff4b';
 import { draw, baseOption, merge, lineSeries, areaSeries, makeScale, legendHTML }
-  from '../charts.js';
-import { monthLabel } from '../store.js';
-import { label as i18nLabel } from '../i18n.js';
+  from '../charts.js?v=6b4b1dff4b';
+import { monthLabel } from '../store.js?v=6b4b1dff4b';
+import { label as i18nLabel } from '../i18n.js?v=6b4b1dff4b';
 
 /* Each break-down dimension names the cube that carries it.
    'main'  — the start-up cube: basin, province, formation, operator, fluid,

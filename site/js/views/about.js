@@ -5,7 +5,7 @@
    the build's own manifests, so it cannot drift away from what was actually
    shipped. */
 
-import { num, esc, pct } from '../format.js';
+import { num, esc, pct } from '../format.js?v=6b4b1dff4b';
 
 export async function render(root, ctx) {
   const prov = ctx.provenance || {};

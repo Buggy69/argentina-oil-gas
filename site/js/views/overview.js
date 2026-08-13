@@ -5,13 +5,13 @@
    on one plot with two y-axes would invent a relationship the data does not
    contain. */
 
-import { query } from '../query.js';
-import { state, queryFilters } from '../state.js';
-import { compact, num, convert, units, pct } from '../format.js';
+import { query } from '../query.js?v=6b4b1dff4b';
+import { state, queryFilters } from '../state.js?v=6b4b1dff4b';
+import { compact, num, convert, units, pct } from '../format.js?v=6b4b1dff4b';
 import { draw, baseOption, merge, areaSeries, lineSeries, makeScale, legendHTML }
-  from '../charts.js';
-import { monthLabel } from '../store.js';
-import { label as i18nLabel } from '../i18n.js';
+  from '../charts.js?v=6b4b1dff4b';
+import { monthLabel } from '../store.js?v=6b4b1dff4b';
+import { label as i18nLabel } from '../i18n.js?v=6b4b1dff4b';
 
 /**
  * TIER A FAST PATH — draw the whole Overview from summary.json alone.

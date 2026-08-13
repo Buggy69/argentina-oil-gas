@@ -9,12 +9,12 @@
    p10 is the LOW value — the statistical convention, stated in the header of
    the table rather than left for the reader to infer. */
 
-import { getSource, selectRows } from '../query.js';
-import { queryFilters } from '../state.js';
-import { compact, num, convert, units, esc, pct } from '../format.js';
-import { draw, baseOption, merge, barSeries, lineSeries } from '../charts.js';
-import { describe, histogram, lorenz, correlationMatrix, topShare } from '../stats.js';
-import { label as i18nLabel } from '../i18n.js';
+import { getSource, selectRows } from '../query.js?v=6b4b1dff4b';
+import { queryFilters } from '../state.js?v=6b4b1dff4b';
+import { compact, num, convert, units, esc, pct } from '../format.js?v=6b4b1dff4b';
+import { draw, baseOption, merge, barSeries, lineSeries } from '../charts.js?v=6b4b1dff4b';
+import { describe, histogram, lorenz, correlationMatrix, topShare } from '../stats.js?v=6b4b1dff4b';
+import { label as i18nLabel } from '../i18n.js?v=6b4b1dff4b';
 
 const MEASURES = [
   ['cum_oil_m3', 'Cumulative oil', 'oil'],
