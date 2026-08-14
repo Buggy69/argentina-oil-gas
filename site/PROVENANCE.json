@@ -1,106 +1,13 @@
 {
-  "generated": "2026-08-12T21:41:36+00:00",
+  "generated": "2026-08-14T07:43:32+00:00",
   "snapshot": "2026-08-10",
   "petrodb": {
-    "driver": "local_parquet",
-    "root": "C:\\Users\\mhaas\\Claude_projects\\petrodb_dashboard\\data\\raw\\petrodb",
-    "files": {
-      "wells.parquet": {
-        "bytes": 8286353,
-        "sha256": "b70798071b3deed9eba4eca0667d90a1cb3be14bb3ed034b8411d1a661bbab0d"
-      },
-      "well_events.parquet": {
-        "bytes": 2117040,
-        "sha256": "1aea1e4d46fa3fbc9d3d643c7d5ae3e214aa6a7b03b5ac4326f573cfdb2bcca8"
-      },
-      "well_operator_history.parquet": {
-        "bytes": 611047,
-        "sha256": "4da9b9fe16e6fefa73f668dab1e4867f15f938f8301105c0a102f2d50c8078c3"
-      },
-      "monthly_production/anio=2006/data.parquet": {
-        "bytes": 6483231,
-        "sha256": "a07a483a08eea16287c52c50836d60e78d739c18e0aa1cf8ee946a3cbead5227"
-      },
-      "monthly_production/anio=2007/data.parquet": {
-        "bytes": 5952744,
-        "sha256": "e9a475dda1e6d07bd8fe6c218cf1f74db79dba65aabdcd64a0504653818fb868"
-      },
-      "monthly_production/anio=2008/data.parquet": {
-        "bytes": 6309250,
-        "sha256": "38f001cf95e89483a9c1136a9f83c91e25827696cab1641a14ee1539da3d7824"
-      },
-      "monthly_production/anio=2009/data.parquet": {
-        "bytes": 6568031,
-        "sha256": "e9db3396fd8a388c43ed4ec420056f998ca330bcea1c250a7726df3f735fba1d"
-      },
-      "monthly_production/anio=2010/data.parquet": {
-        "bytes": 6667218,
-        "sha256": "5b092f57a51e8cd5e22040cb42cfd93400f2cbeb105d8af600c7bb223420c599"
-      },
-      "monthly_production/anio=2011/data.parquet": {
-        "bytes": 6725828,
-        "sha256": "ff1146430241ffa9d56e603cfa810a8fbc5a67f1501dee1cad4d1e2f7bec91fb"
-      },
-      "monthly_production/anio=2012/data.parquet": {
-        "bytes": 6956857,
-        "sha256": "5e0ffa3b94a403fa7fd1cda4be36493d152d37c08c6e0f2ef42d360c2cdaccec"
-      },
-      "monthly_production/anio=2013/data.parquet": {
-        "bytes": 7232874,
-        "sha256": "20f054b71ed1b6a8963ea3a085e1138a33f078c4d575099f1079fe7ec38815b9"
-      },
-      "monthly_production/anio=2014/data.parquet": {
-        "bytes": 7457840,
-        "sha256": "882d5c47da262512626ea78b8dc9ee1f7146145b7e2cb6cf271bc6e845128b0d"
-      },
-      "monthly_production/anio=2015/data.parquet": {
-        "bytes": 7642903,
-        "sha256": "234244ccd4e7b335b16bded402ceeff27c633f2346ce615625156ac17c2eeed4"
-      },
-      "monthly_production/anio=2016/data.parquet": {
-        "bytes": 7824704,
-        "sha256": "41a19b590232674ef5ac87ba5d7ff7568b11014e394edbe9fa3b6dc9f6a4f711"
-      },
-      "monthly_production/anio=2017/data.parquet": {
-        "bytes": 7849257,
-        "sha256": "aaa4431fabb2be81f998476eea23d3698d2f53f696c48579f7d284100dae5a3c"
-      },
-      "monthly_production/anio=2018/data.parquet": {
-        "bytes": 7818652,
-        "sha256": "150cabcce80d1b582df419bbdcb7c8620795ef2711b0978f61d0520eec8d94f8"
-      },
-      "monthly_production/anio=2019/data.parquet": {
-        "bytes": 7935229,
-        "sha256": "e21ffea8814914e774f9fc50c0501f0c179e6e3ac78f31c36db2bb63f28dac2a"
-      },
-      "monthly_production/anio=2020/data.parquet": {
-        "bytes": 7683395,
-        "sha256": "5a7a64d358b2b405cfb2ad780c0be10cf43949ef7190a5d1d7168b4792410abc"
-      },
-      "monthly_production/anio=2021/data.parquet": {
-        "bytes": 7794949,
-        "sha256": "17d51942a524a02e753d921bd23064bff3ea9c0dbe0d3ffb993f4731ef745b7b"
-      },
-      "monthly_production/anio=2022/data.parquet": {
-        "bytes": 7852724,
-        "sha256": "10ac29296abaae174290c617524ec39d57a95b01d3c3524b220d1c8a86dc3b22"
-      },
-      "monthly_production/anio=2023/data.parquet": {
-        "bytes": 7914328,
-        "sha256": "0976703423e6d2c1dc6d48d9a1d29a76dc00fcaf037b9e487b21c24f47531fff"
-      },
-      "monthly_production/anio=2024/data.parquet": {
-        "bytes": 7990975,
-        "sha256": "42aa520c132e1dc84d49f469431ebeadc0e41cf187f3b868673f40b8517e7ef7"
-      },
-      "monthly_production/anio=2025/data.parquet": {
-        "bytes": 7973845,
-        "sha256": "a85eda1c7deffb358f21266598ba637093a3abed7062836426c30a658bdab008"
-      }
-    }
+    "driver": "hf_parquet",
+    "base_url": "https://huggingface.co/datasets/sumpalabs/petrodb/resolve/main/argentina/",
+    "partitions": 20
   },
   "portal": {
-    "fetched_at": "2026-08-10T20:23:49+00:00",
+    "fetched_at": "2026-08-14T07:38:23+00:00",
     "ckan_base": "https://datos.energia.gob.ar",
     "resources": {
       "serie_historica_petroleo.csv": {
@@ -147,7 +54,7 @@
         "package_id": "71fa2e84-0316-4a1b-af68-7f35e41f58d7",
         "resource_id": "2280ad92-6ed3-403e-a095-50139863ab0d",
         "url": "http://datos.energia.gob.ar/dataset/71fa2e84-0316-4a1b-af68-7f35e41f58d7/resource/2280ad92-6ed3-403e-a095-50139863ab0d/download/datos-de-fractura-de-pozos-de-hidrocarburos-adjunto-iv-actualizacin-diaria.csv",
-        "last_modified": "2026-08-10T04:00:02.405580",
+        "last_modified": "2026-08-12T04:00:03.766183",
         "licence": "CC BY 4.0",
         "bytes": 1213936,
         "sha256": "fe1ff6d01d2f77e7a7cb856e851af414b2c5596c663e9942f82ad38a55b723b3",
@@ -157,27 +64,27 @@
   },
   "outputs": {
     "summary.json": {
-      "bytes": 245994,
-      "sha256": "d28117032126c68289f7b110f77b03006c7e2540b9a0648df56ad263e77b685a"
+      "bytes": 246010,
+      "sha256": "272f12f6badb7d920dacba496a9a76fb4f82dc283d4596dfdecdf85c8d773e48"
     },
     "agg_monthly.parquet": {
-      "bytes": 5830344,
+      "bytes": 5829080,
       "rows": 396278,
-      "sha256": "056793c94a1c24c3f28b0ba41287816f935b554ee495e2a355ad827c10c8b685"
+      "sha256": "91809bf5ef330d314bcd78be0dc4a74edbcda1160c3f2ab42da209750e7d0bea"
     },
     "wells_slim.parquet": {
-      "bytes": 3295609,
-      "sha256": "cbf543b283454e67e090cb57b365791e550765651eb57cbfc7928cbe13c770a8"
+      "bytes": 3298028,
+      "sha256": "9a29606aeb399b9711af78dab9cbb977a06a077e5e02660ded94f0877b71e730"
     },
     "agg_block.parquet": {
-      "bytes": 4382535,
+      "bytes": 4382704,
       "rows": 345854,
-      "sha256": "5dfeb37e2220ae517d374f84115699a3e8fb10d1fb0e7747cbdc9274fb617f1b"
+      "sha256": "e07ceeaeae7af8e66ae23352bb830dc135be6d03a8e4324b03fffbe0543a3039"
     },
     "typecurve.parquet": {
-      "bytes": 3911070,
+      "bytes": 3917080,
       "rows": 150999,
-      "sha256": "ebb69a53085ba69336e6a08c7fa54f732a960573b19ae4a046051af052c23aa4"
+      "sha256": "c35e21695e05b92876b47da461bf2d8d9cde823828f9cc0a8a277b50409b0233"
     },
     "wells_buckets": {
       "0": {

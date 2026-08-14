@@ -3,7 +3,7 @@
 Every check prints the number it measured. Discrepancies are quantified and explained rather than reconciled away.
 
 Sources: petrodb (`sumpalabs/petrodb`, CC BY 4.0) and Secretaría de Energía de la Nación, `datos.energia.gob.ar` (CC BY 4.0).
-*Generated 2026-08-10 20:30 UTC from source driver `local_parquet`.*
+*Generated 2026-08-14 07:39 UTC from source driver `hf_parquet`.*
 
 ## 1. Row counts against the published documentation
 
