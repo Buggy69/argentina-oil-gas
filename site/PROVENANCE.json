@@ -1,5 +1,5 @@
 {
-  "generated": "2026-08-14T07:43:32+00:00",
+  "generated": "2026-08-21T06:56:14+00:00",
   "snapshot": "2026-08-10",
   "petrodb": {
     "driver": "hf_parquet",
@@ -7,27 +7,27 @@
     "partitions": 20
   },
   "portal": {
-    "fetched_at": "2026-08-14T07:38:23+00:00",
+    "fetched_at": "2026-08-21T06:53:59+00:00",
     "ckan_base": "https://datos.energia.gob.ar",
     "resources": {
       "serie_historica_petroleo.csv": {
         "package_id": "c846e79c-026c-4040-897f-1ad3543b407c",
         "resource_id": "af8c50bb-fde0-43b7-98eb-7cd14daf586c",
         "url": "http://datos.energia.gob.ar/dataset/c846e79c-026c-4040-897f-1ad3543b407c/resource/af8c50bb-fde0-43b7-98eb-7cd14daf586c/download/serie-histrica-de-produccin-de-petrleo-por-cuenca-y-sub-tipo-de-recurso-captulo-iv-.csv",
-        "last_modified": "2026-07-21T05:09:01.355644",
+        "last_modified": "2026-08-21T05:08:29.994130",
         "licence": "CC BY 4.0",
-        "bytes": 32267,
-        "sha256": "c1750f567742208b54fc06f31fa020ed911b854d59b12dcefb2e046859b90de5",
+        "bytes": 32399,
+        "sha256": "3a189212500442b5e11a78338bb3309187365b0ad1b724d3077e7a5877846b18",
         "purpose": "Official monthly oil totals by basin and resource subtype \u2014 ground truth"
       },
       "serie_historica_gas.csv": {
         "package_id": "c846e79c-026c-4040-897f-1ad3543b407c",
         "resource_id": "a3244ddd-38bc-4800-a700-360b649d2f3a",
         "url": "http://datos.energia.gob.ar/dataset/c846e79c-026c-4040-897f-1ad3543b407c/resource/a3244ddd-38bc-4800-a700-360b649d2f3a/download/serie-histrica-de-produccin-de-gas-natural-por-cuenca-y-sub-tipo-de-recurso-captulo-iv-.csv",
-        "last_modified": "2026-03-21T05:09:04.410598",
+        "last_modified": "2026-08-21T05:16:33.589286",
         "licence": "CC BY 4.0",
-        "bytes": 30757,
-        "sha256": "3489414946f15172437d171c9b0a8a590b6fe3a8359c5bba49612b94964e5ff2",
+        "bytes": 31433,
+        "sha256": "112931bde12dcecc0a05cbb96179d1434df36c324378bcf0bac0ce4983e8d154",
         "purpose": "Official monthly gas totals by basin and resource subtype \u2014 ground truth"
       },
       "padron_primera_produccion.csv": {
@@ -54,37 +54,37 @@
         "package_id": "71fa2e84-0316-4a1b-af68-7f35e41f58d7",
         "resource_id": "2280ad92-6ed3-403e-a095-50139863ab0d",
         "url": "http://datos.energia.gob.ar/dataset/71fa2e84-0316-4a1b-af68-7f35e41f58d7/resource/2280ad92-6ed3-403e-a095-50139863ab0d/download/datos-de-fractura-de-pozos-de-hidrocarburos-adjunto-iv-actualizacin-diaria.csv",
-        "last_modified": "2026-08-12T04:00:03.766183",
+        "last_modified": "2026-08-21T04:02:20.415805",
         "licence": "CC BY 4.0",
-        "bytes": 1213936,
-        "sha256": "fe1ff6d01d2f77e7a7cb856e851af414b2c5596c663e9942f82ad38a55b723b3",
+        "bytes": 1217832,
+        "sha256": "2c8c25a63e95ed0e31ab9bf7682df14001575d9016e620aa428551c8dbb695e6",
         "purpose": "Per-fracture-job completion data \u2014 trajectory, stages, proppant, fluid"
       }
     }
   },
   "outputs": {
     "summary.json": {
-      "bytes": 246010,
-      "sha256": "272f12f6badb7d920dacba496a9a76fb4f82dc283d4596dfdecdf85c8d773e48"
+      "bytes": 246007,
+      "sha256": "12e658b8544cd3acfa9c3ac6678be72d82ea19914f3c015137cfdf8732d08786"
     },
     "agg_monthly.parquet": {
-      "bytes": 5829080,
+      "bytes": 5833481,
       "rows": 396278,
-      "sha256": "91809bf5ef330d314bcd78be0dc4a74edbcda1160c3f2ab42da209750e7d0bea"
+      "sha256": "431fcbed4541fd5baa3570e03a64e9bfb57375754f2f93cd2dd2c9fd5c00851d"
     },
     "wells_slim.parquet": {
-      "bytes": 3298028,
-      "sha256": "9a29606aeb399b9711af78dab9cbb977a06a077e5e02660ded94f0877b71e730"
+      "bytes": 3296369,
+      "sha256": "15e4aea43574f7d85933480ecbc3538651a0efd42bc11152111a1aa57b7f2f97"
     },
     "agg_block.parquet": {
-      "bytes": 4382704,
+      "bytes": 4381990,
       "rows": 345854,
-      "sha256": "e07ceeaeae7af8e66ae23352bb830dc135be6d03a8e4324b03fffbe0543a3039"
+      "sha256": "83258a5ddf132a23fdfe3ee81f7f85e28c49f5fa6aed410e6d0257574995a775"
     },
     "typecurve.parquet": {
-      "bytes": 3917080,
+      "bytes": 3915284,
       "rows": 150999,
-      "sha256": "c35e21695e05b92876b47da461bf2d8d9cde823828f9cc0a8a277b50409b0233"
+      "sha256": "e814e28ed5f0ac8219dd177f82b03ca628363f7d7e4bc316fe78c5e8a22723d8"
     },
     "wells_buckets": {
       "0": {

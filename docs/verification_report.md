@@ -3,7 +3,7 @@
 Every check prints the number it measured. Discrepancies are quantified and explained rather than reconciled away.
 
 Sources: petrodb (`sumpalabs/petrodb`, CC BY 4.0) and Secretaría de Energía de la Nación, `datos.energia.gob.ar` (CC BY 4.0).
-*Generated 2026-08-14 07:39 UTC from source driver `hf_parquet`.*
+*Generated 2026-08-21 06:54 UTC from source driver `hf_parquet`.*
 
 ## 1. Row counts against the published documentation
 
@@ -46,8 +46,8 @@ petrodb summed by basin and month, against `serie-histórica de producción por 
 | oil | NOROESTE | 240 | 9,515,936 | 9,554,567 | -0.404% | 28.06% |
 | oil | CUYANA | 240 | 30,907,079 | 30,910,921 | -0.012% | 3.01% |
 | gas | AUSTRAL | 240 | 206,366,529 | 206,366,529 | -0.000% | 0.00% |
-| gas | GOLFO SAN JORGE | 240 | 95,648,263 | 95,883,023 | -0.245% | 54.00% |
-| gas | NEUQUINA | 240 | 569,338,296 | 569,582,508 | -0.043% | 3.49% |
+| gas | GOLFO SAN JORGE | 240 | 95,648,263 | 95,885,072 | -0.247% | 54.00% |
+| gas | NEUQUINA | 240 | 569,338,296 | 569,582,993 | -0.043% | 3.49% |
 | gas | NOROESTE | 240 | 66,973,875 | 67,242,824 | -0.400% | 35.36% |
 | gas | CUYANA | 240 | 1,070,295 | 1,070,468 | -0.016% | 3.36% |
 
@@ -74,8 +74,8 @@ Gas: 2006-01 total 4,229,240.2 with published daily 136.4271. total/31 = 136,427
 |---|---|---|---|---|---|
 | oil | SHALE | 240 | 114,772,374 | 115,125,553 | -0.31% |
 | oil | TIGHT | 240 | 4,654,655 | 4,679,419 | -0.53% |
-| gas | SHALE | 240 | 140,259,572 | 140,324,251 | -0.05% |
-| gas | TIGHT | 240 | 103,247,341 | 103,714,789 | -0.45% |
+| gas | SHALE | 240 | 140,259,572 | 140,324,780 | -0.05% |
+| gas | TIGHT | 240 | 103,247,341 | 103,714,750 | -0.45% |
 
 
 ## 7. Physical plausibility and the NULL-versus-zero census
@@ -135,9 +135,9 @@ Trajectory is therefore **known for the unconventional population and unknown fo
 
 | lateral length | = 0 / null | 0–150 m | 150–600 m | ≥ 600 m |
 |---|---|---|---|---|
-| wells | 1,874 | 155 | 20 | 2,555 |
+| wells | 1,875 | 155 | 20 | 2,569 |
 
 
-The distribution is bimodal with an almost empty corridor: only **20** wells of 4,604 fall between 150 m and 600 m, while the horizontal mode sits at p25 = 1,910 m and p50 = 2,500 m. Any cut inside that corridor classifies the same wells, so **500 m** is chosen for roundness and the result is insensitive to it — moving the cut to 150 m or 1,000 m reclassifies at most 20 wells (0.4%).
+The distribution is bimodal with an almost empty corridor: only **20** wells of 4,619 fall between 150 m and 600 m, while the horizontal mode sits at p25 = 1,910 m and p50 = 2,500 m. Any cut inside that corridor classifies the same wells, so **500 m** is chosen for roundness and the result is insensitive to it — moving the cut to 150 m or 1,000 m reclassifies at most 20 wells (0.4%).
 
 First-production padrón covers **85,406 of 85,417 wells** (100.0%). Wells without it get no months-on-production axis and are excluded from type curves, not silently defaulted to zero.
