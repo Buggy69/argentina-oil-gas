@@ -1,5 +1,5 @@
 {
-  "generated": "2026-08-21T06:56:14+00:00",
+  "generated": "2026-08-28T18:27:49+00:00",
   "snapshot": "2026-08-10",
   "petrodb": {
     "driver": "hf_parquet",
@@ -7,7 +7,7 @@
     "partitions": 20
   },
   "portal": {
-    "fetched_at": "2026-08-21T06:53:59+00:00",
+    "fetched_at": "2026-08-28T18:24:45+00:00",
     "ckan_base": "https://datos.energia.gob.ar",
     "resources": {
       "serie_historica_petroleo.csv": {
@@ -54,7 +54,7 @@
         "package_id": "71fa2e84-0316-4a1b-af68-7f35e41f58d7",
         "resource_id": "2280ad92-6ed3-403e-a095-50139863ab0d",
         "url": "http://datos.energia.gob.ar/dataset/71fa2e84-0316-4a1b-af68-7f35e41f58d7/resource/2280ad92-6ed3-403e-a095-50139863ab0d/download/datos-de-fractura-de-pozos-de-hidrocarburos-adjunto-iv-actualizacin-diaria.csv",
-        "last_modified": "2026-08-21T04:02:20.415805",
+        "last_modified": "2026-08-28T04:00:04.097250",
         "licence": "CC BY 4.0",
         "bytes": 1217832,
         "sha256": "2c8c25a63e95ed0e31ab9bf7682df14001575d9016e620aa428551c8dbb695e6",
@@ -64,27 +64,27 @@
   },
   "outputs": {
     "summary.json": {
-      "bytes": 246007,
-      "sha256": "12e658b8544cd3acfa9c3ac6678be72d82ea19914f3c015137cfdf8732d08786"
+      "bytes": 246013,
+      "sha256": "73f386b98aa014ce44275826e9b9984872c40587346bf026586c44912943d36e"
     },
     "agg_monthly.parquet": {
-      "bytes": 5833481,
+      "bytes": 5831827,
       "rows": 396278,
-      "sha256": "431fcbed4541fd5baa3570e03a64e9bfb57375754f2f93cd2dd2c9fd5c00851d"
+      "sha256": "7c73b0922b76b9d40c5e2e7cc17011f80360f8ff3334089ff88aefa48df61dd5"
     },
     "wells_slim.parquet": {
-      "bytes": 3296369,
-      "sha256": "15e4aea43574f7d85933480ecbc3538651a0efd42bc11152111a1aa57b7f2f97"
+      "bytes": 3296064,
+      "sha256": "41766c6aa42904fafbb5d9ec69f275cd81a1b540e778894448d59d62bd87a39c"
     },
     "agg_block.parquet": {
-      "bytes": 4381990,
+      "bytes": 4375688,
       "rows": 345854,
-      "sha256": "83258a5ddf132a23fdfe3ee81f7f85e28c49f5fa6aed410e6d0257574995a775"
+      "sha256": "9e49f7fc9541c71903e12b0b12bae538fbf3545bf5a0d07d440a2f8dfd6affce"
     },
     "typecurve.parquet": {
-      "bytes": 3915284,
+      "bytes": 3913659,
       "rows": 150999,
-      "sha256": "e814e28ed5f0ac8219dd177f82b03ca628363f7d7e4bc316fe78c5e8a22723d8"
+      "sha256": "d0eba325275025be6f43a51059c9535a038c2046af0b1463df7c90e4a284803a"
     },
     "wells_buckets": {
       "0": {
