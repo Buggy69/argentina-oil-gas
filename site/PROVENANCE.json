@@ -1,5 +1,5 @@
 {
-  "generated": "2026-08-28T18:27:49+00:00",
+  "generated": "2026-09-04T11:01:42+00:00",
   "snapshot": "2026-08-10",
   "petrodb": {
     "driver": "hf_parquet",
@@ -7,7 +7,7 @@
     "partitions": 20
   },
   "portal": {
-    "fetched_at": "2026-08-28T18:24:45+00:00",
+    "fetched_at": "2026-09-04T10:56:33+00:00",
     "ckan_base": "https://datos.energia.gob.ar",
     "resources": {
       "serie_historica_petroleo.csv": {
@@ -54,37 +54,37 @@
         "package_id": "71fa2e84-0316-4a1b-af68-7f35e41f58d7",
         "resource_id": "2280ad92-6ed3-403e-a095-50139863ab0d",
         "url": "http://datos.energia.gob.ar/dataset/71fa2e84-0316-4a1b-af68-7f35e41f58d7/resource/2280ad92-6ed3-403e-a095-50139863ab0d/download/datos-de-fractura-de-pozos-de-hidrocarburos-adjunto-iv-actualizacin-diaria.csv",
-        "last_modified": "2026-08-28T04:00:04.097250",
+        "last_modified": "2026-09-04T04:00:02.344993",
         "licence": "CC BY 4.0",
-        "bytes": 1217832,
-        "sha256": "2c8c25a63e95ed0e31ab9bf7682df14001575d9016e620aa428551c8dbb695e6",
+        "bytes": 1223572,
+        "sha256": "11872140fb2b7193daf1b377f187d7af6ace763233d976709880e9a5724e6439",
         "purpose": "Per-fracture-job completion data \u2014 trajectory, stages, proppant, fluid"
       }
     }
   },
   "outputs": {
     "summary.json": {
-      "bytes": 246013,
-      "sha256": "73f386b98aa014ce44275826e9b9984872c40587346bf026586c44912943d36e"
+      "bytes": 246002,
+      "sha256": "c798b7785b5c9144a185e2cb2f08df6ae5b8cb0130c51f43f03e63ff0cac755e"
     },
     "agg_monthly.parquet": {
-      "bytes": 5831827,
+      "bytes": 5841510,
       "rows": 396278,
-      "sha256": "7c73b0922b76b9d40c5e2e7cc17011f80360f8ff3334089ff88aefa48df61dd5"
+      "sha256": "6d8bb80ee861206b4a41ab1a0791859fb681edf12c331a42b4da4f00aeff178d"
     },
     "wells_slim.parquet": {
-      "bytes": 3296064,
-      "sha256": "41766c6aa42904fafbb5d9ec69f275cd81a1b540e778894448d59d62bd87a39c"
+      "bytes": 3296940,
+      "sha256": "3b91fa34d02915cd8ada9d441e2a9a9e532d16c874d63657c5619be527a2b337"
     },
     "agg_block.parquet": {
-      "bytes": 4375688,
+      "bytes": 4379457,
       "rows": 345854,
-      "sha256": "9e49f7fc9541c71903e12b0b12bae538fbf3545bf5a0d07d440a2f8dfd6affce"
+      "sha256": "e38d0daabf91afb1ba49e3dc28baf7ee820abb93ce5c24cfbe0f0f5d0356f219"
     },
     "typecurve.parquet": {
-      "bytes": 3913659,
+      "bytes": 3915556,
       "rows": 150999,
-      "sha256": "d0eba325275025be6f43a51059c9535a038c2046af0b1463df7c90e4a284803a"
+      "sha256": "6519abf23721e09c7023af5cbad8a6e0be6317ab3bae07d3669ea8df56213677"
     },
     "wells_buckets": {
       "0": {

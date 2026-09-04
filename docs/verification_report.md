@@ -3,7 +3,7 @@
 Every check prints the number it measured. Discrepancies are quantified and explained rather than reconciled away.
 
 Sources: petrodb (`sumpalabs/petrodb`, CC BY 4.0) and Secretaría de Energía de la Nación, `datos.energia.gob.ar` (CC BY 4.0).
-*Generated 2026-08-28 18:25 UTC from source driver `hf_parquet`.*
+*Generated 2026-09-04 10:57 UTC from source driver `hf_parquet`.*
 
 ## 1. Row counts against the published documentation
 
@@ -124,7 +124,7 @@ Wells with missing coordinates: **1,176**; outside Argentina's bounding box: **2
 |---|---|---|---|
 | CONVENCIONAL | 58,302 | 767 | 1.3% |
 | No informado | 21,859 | 29 | 0.1% |
-| NO CONVENCIONAL | 4,833 | 3,668 | 75.9% |
+| NO CONVENCIONAL | 4,833 | 3,672 | 76.0% |
 | SIN RESERVORIO | 418 | 0 | 0.0% |
 | NO DISCRIMINADO | 5 | 1 | 20.0% |
 
@@ -135,9 +135,9 @@ Trajectory is therefore **known for the unconventional population and unknown fo
 
 | lateral length | = 0 / null | 0–150 m | 150–600 m | ≥ 600 m |
 |---|---|---|---|---|
-| wells | 1,875 | 155 | 20 | 2,569 |
+| wells | 1,875 | 155 | 20 | 2,592 |
 
 
-The distribution is bimodal with an almost empty corridor: only **20** wells of 4,619 fall between 150 m and 600 m, while the horizontal mode sits at p25 = 1,910 m and p50 = 2,500 m. Any cut inside that corridor classifies the same wells, so **500 m** is chosen for roundness and the result is insensitive to it — moving the cut to 150 m or 1,000 m reclassifies at most 20 wells (0.4%).
+The distribution is bimodal with an almost empty corridor: only **20** wells of 4,642 fall between 150 m and 600 m, while the horizontal mode sits at p25 = 1,910 m and p50 = 2,500 m. Any cut inside that corridor classifies the same wells, so **500 m** is chosen for roundness and the result is insensitive to it — moving the cut to 150 m or 1,000 m reclassifies at most 20 wells (0.4%).
 
 First-production padrón covers **85,406 of 85,417 wells** (100.0%). Wells without it get no months-on-production axis and are excluded from type curves, not silently defaulted to zero.
