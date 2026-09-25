@@ -18,73 +18,73 @@
   "reconciliation": {
     "oil:AUSTRAL": {
       "months": 240,
-      "petrodb": 25224937.06790071,
+      "petrodb": 25224937.067900714,
       "official": 25224937.163899995,
-      "total_diff_pct": -3.805729423822493e-07,
-      "worst_month_pct": 3.2456588328343633e-06
+      "total_diff_pct": -3.8057292761396553e-07,
+      "worst_month_pct": 3.245658848011276e-06
     },
     "oil:GOLFO SAN JORGE": {
       "months": 240,
-      "petrodb": 278316548.3821254,
-      "official": 278888898.96840006,
-      "total_diff_pct": -0.20522530240242176,
-      "worst_month_pct": 35.1794075414249
+      "petrodb": 278316548.3821253,
+      "official": 278888898.9684,
+      "total_diff_pct": -0.2052253024024218,
+      "worst_month_pct": 35.179407541424816
     },
     "oil:NEUQUINA": {
       "months": 240,
-      "petrodb": 330259107.61169076,
-      "official": 330823823.6344001,
-      "total_diff_pct": -0.17069992617383214,
-      "worst_month_pct": 11.35753858876908
+      "petrodb": 330259107.61169064,
+      "official": 330823823.6344,
+      "total_diff_pct": -0.1706999261738322,
+      "worst_month_pct": 11.357538588769101
     },
     "oil:NOROESTE": {
       "months": 240,
       "petrodb": 9515935.554646175,
-      "official": 9554567.3477,
-      "total_diff_pct": -0.40432802080906366,
+      "official": 9554567.347699998,
+      "total_diff_pct": -0.40432802080904423,
       "worst_month_pct": 28.056885479070676
     },
     "oil:CUYANA": {
       "months": 240,
-      "petrodb": 30907079.041321624,
-      "official": 30910921.392300002,
-      "total_diff_pct": -0.012430399371192303,
-      "worst_month_pct": 3.006466167535448
+      "petrodb": 30907079.04132162,
+      "official": 30910921.392299995,
+      "total_diff_pct": -0.012430399371180255,
+      "worst_month_pct": 3.00646616753538
     },
     "gas:AUSTRAL": {
       "months": 240,
-      "petrodb": 206366528.55942023,
-      "official": 206366528.59899998,
-      "total_diff_pct": -1.917934530181007e-08,
+      "petrodb": 206366528.55942017,
+      "official": 206366528.59899992,
+      "total_diff_pct": -1.9179345301810078e-08,
       "worst_month_pct": 1.8582558936886038e-07
     },
     "gas:GOLFO SAN JORGE": {
       "months": 240,
-      "petrodb": 95648262.84062067,
-      "official": 95885071.93100001,
-      "total_diff_pct": -0.2469718023987644,
-      "worst_month_pct": 53.99544589888858
+      "petrodb": 95648262.8406207,
+      "official": 95885071.93100002,
+      "total_diff_pct": -0.24697180239874877,
+      "worst_month_pct": 53.99544589888857
     },
     "gas:NEUQUINA": {
       "months": 240,
-      "petrodb": 569338296.0048099,
+      "petrodb": 569338296.0048103,
       "official": 569582992.8288,
-      "total_diff_pct": -0.04296069704870126,
-      "worst_month_pct": 3.490633736892921
+      "total_diff_pct": -0.04296069704861755,
+      "worst_month_pct": 3.4906337368926934
     },
     "gas:NOROESTE": {
       "months": 240,
-      "petrodb": 66973874.95996934,
+      "petrodb": 66973874.95996936,
       "official": 67242824.26990002,
-      "total_diff_pct": -0.3999673018658026,
+      "total_diff_pct": -0.3999673018657804,
       "worst_month_pct": 35.35888670897303
     },
     "gas:CUYANA": {
       "months": 240,
-      "petrodb": 1070295.0887084818,
-      "official": 1070467.6086000002,
-      "total_diff_pct": -0.016116311239349812,
-      "worst_month_pct": 3.3628206408920356
+      "petrodb": 1070295.088708482,
+      "official": 1070467.6086,
+      "total_diff_pct": -0.016116311239306316,
+      "worst_month_pct": 3.3628206408920107
     }
   },
   "bbl_per_m3_implied": 6.289811089488897,
@@ -170,7 +170,7 @@
     "vertical_or_zero": 1875,
     "0_150": 155,
     "150_600": 20,
-    "over_600": 2596,
+    "over_600": 2601,
     "threshold_m": 500.0
   },
   "padron_coverage": {
