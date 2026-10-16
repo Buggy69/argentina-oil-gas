@@ -1,5 +1,5 @@
 {
-  "generated": "2026-10-09T12:57:39+00:00",
+  "generated": "2026-10-16T11:09:46+00:00",
   "snapshot": "2026-08-10",
   "petrodb": {
     "driver": "hf_parquet",
@@ -7,7 +7,7 @@
     "partitions": 20
   },
   "portal": {
-    "fetched_at": "2026-10-09T12:53:42+00:00",
+    "fetched_at": "2026-10-16T11:03:17+00:00",
     "ckan_base": "https://datos.energia.gob.ar",
     "resources": {
       "serie_historica_petroleo.csv": {
@@ -34,10 +34,10 @@
         "package_id": "c846e79c-026c-4040-897f-1ad3543b407c",
         "resource_id": "5578dd48-d0dd-487e-8ddc-bd3ebb1afef0",
         "url": "http://datos.energia.gob.ar/dataset/c846e79c-026c-4040-897f-1ad3543b407c/resource/5578dd48-d0dd-487e-8ddc-bd3ebb1afef0/download/padrn-de-pozos-de-captulo-iv-con-fecha-de-primera-produccin.csv",
-        "last_modified": "2026-08-10T09:02:39.502712",
+        "last_modified": "2026-10-10T09:02:09.080582",
         "licence": "CC BY 4.0",
-        "bytes": 1169489,
-        "sha256": "ebf85f3f82919152d3096bad6508a86404e42eaa3f74f2c2fb58a794e39187cc",
+        "bytes": 1171351,
+        "sha256": "fc99e349313b9563a07af192965d513be164fdb98070d29353a662463acb415d",
         "purpose": "First production month per idpozo \u2014 the months-on-production axis"
       },
       "capitulo_iv_pozos.csv": {
@@ -54,37 +54,37 @@
         "package_id": "71fa2e84-0316-4a1b-af68-7f35e41f58d7",
         "resource_id": "2280ad92-6ed3-403e-a095-50139863ab0d",
         "url": "http://datos.energia.gob.ar/dataset/71fa2e84-0316-4a1b-af68-7f35e41f58d7/resource/2280ad92-6ed3-403e-a095-50139863ab0d/download/datos-de-fractura-de-pozos-de-hidrocarburos-adjunto-iv-actualizacin-diaria.csv",
-        "last_modified": "2026-10-09T04:00:09.845974",
+        "last_modified": "2026-10-16T04:01:37.957791",
         "licence": "CC BY 4.0",
-        "bytes": 1250372,
-        "sha256": "8143795aa0de04f581b98baf8dccb2ee98dbf54becbf7adad7b3d0528977ddf4",
+        "bytes": 1250081,
+        "sha256": "76881ebed2b38dc3009097bd54b38bd215759995e393d6f28854aa4f9ffe6ea9",
         "purpose": "Per-fracture-job completion data \u2014 trajectory, stages, proppant, fluid"
       }
     }
   },
   "outputs": {
     "summary.json": {
-      "bytes": 246006,
-      "sha256": "94fe6c2eba797a8cd763b4f06aba88fec925cb8422b1811e10f8b1123d9a1dc9"
+      "bytes": 246007,
+      "sha256": "e3ecb6008b9b8d5e53e14038652acb9c9b494f148757b82e48219b5eda02b5c4"
     },
     "agg_monthly.parquet": {
-      "bytes": 5833685,
+      "bytes": 5830267,
       "rows": 396278,
-      "sha256": "73d0cd1b7ed4dd464f4a5b0327a075cf8a7edfeb6e70a85324295a25bf88be70"
+      "sha256": "2d50f24eb460b110daf0edcd09ecd717acf55c32459465fab269a66abd27e74f"
     },
     "wells_slim.parquet": {
-      "bytes": 3299308,
-      "sha256": "09d25b68d6dbab45f399ac1c9268300dde3b9092f090c8b831c131bc9b510515"
+      "bytes": 3298862,
+      "sha256": "721980d4eef5177794139d1efb17ec31c96f3c3b269c7f87f3824d761a500594"
     },
     "agg_block.parquet": {
-      "bytes": 4384627,
-      "rows": 345854,
-      "sha256": "6a38fdf86a7fe61a78b5f67a02b72d143c35a4d641f2aee4f7d8bdcdc30e4fd5"
+      "bytes": 4387184,
+      "rows": 345835,
+      "sha256": "b017215b34a013182fa79cbc468bfbb68a4294e7fef96a3c497874f4317b7733"
     },
     "typecurve.parquet": {
-      "bytes": 3915588,
+      "bytes": 3913966,
       "rows": 150996,
-      "sha256": "c8aed9e49586925170c65581f31270e1227052be1d5620d83364f9c5b42381a8"
+      "sha256": "48c6501ec0340e70347dc17a29cb18181b7c87b3d6698c1ab21090218673a9e3"
     },
     "wells_buckets": {
       "0": {
