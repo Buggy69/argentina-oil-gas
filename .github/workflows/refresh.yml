@@ -23,6 +23,13 @@ on:
     # 06:00 UTC every Friday. Cron on GitHub is UTC and has no timezone field.
     - cron: '0 6 * * 5'
   workflow_dispatch:        # manual trigger, for the first supervised run
+  push:
+    # New official files pushed by the relay on Max's laptop
+    # (tools/relay_portal_snapshot.ps1) — rebuild now instead of waiting for
+    # Friday. This cannot loop: pushes made by this workflow's own token never
+    # trigger workflows.
+    branches: [main]
+    paths: ['data/portal_snapshot/**']
 
 permissions:
   contents: write           # to commit rebuilt tiers
@@ -86,6 +93,10 @@ jobs:
             echo "no change in the published data"
           else
             git commit -m "chore: weekly data refresh ($(date -u +%Y-%m-%d))"
+            # The relay may have pushed a snapshot while this job ran. It only
+            # touches data/portal_snapshot, so replaying our commit on top is
+            # always clean.
+            git pull --rebase --quiet
             git push
           fi
 
