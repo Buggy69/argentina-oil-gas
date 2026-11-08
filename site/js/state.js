@@ -22,6 +22,7 @@ export const state = {
   monthRange: null,       // {min, max} in month-index units
   oilfield: false,
   monthly: false,         // series as monthly volume instead of daily rate
+  wells: [],              // Compare-wells view: idpozo list, target first
 };
 
 export function onChange(fn) { listeners.add(fn); return () => listeners.delete(fn); }
@@ -60,6 +61,7 @@ export function clearFilters() {
 export function setMonthRange(range) { state.monthRange = range; emit(); }
 export function setOilfield(on) { state.oilfield = !!on; emit(); }
 export function setMonthly(on) { state.monthly = !!on; emit(); }
+export function setWells(ids) { state.wells = ids.slice(); emit(); }
 
 export function activeFilterCount() {
   return Object.values(state.filters).reduce((a, v) => a + v.length, 0)
@@ -93,6 +95,9 @@ function writeHash() {
   // Written only when not the default, so existing shared links stay valid
   // and a link to the daily view is as short as before.
   if (state.monthly) parts.push('r=month');
+  // The compared wells travel in the link, so a comparison can be sent to a
+  // colleague. idpozo, not the well name: names are not unique per formation.
+  if (state.wells.length) parts.push('w=' + state.wells.join('|'));
   const hash = `#/${state.view}` + (parts.length ? '?' + parts.join('&') : '');
   if (location.hash !== hash) history.replaceState(null, '', hash);
 }
@@ -108,6 +113,7 @@ export function readHash() {
   // pasted link cannot inherit units or time basis from the previous one.
   state.oilfield = false;
   state.monthly = false;
+  state.wells = [];
   if (!qs) return;
   for (const pair of qs.split('&')) {
     const [k, v] = pair.split('=');
@@ -119,6 +125,8 @@ export function readHash() {
       state.oilfield = v === 'field';
     } else if (k === 'r') {
       state.monthly = v === 'month';
+    } else if (k === 'w') {
+      state.wells = v.split('|').map(Number).filter(Number.isFinite);
     } else {
       state.filters[decodeURIComponent(k)] = v.split('|').map(decodeURIComponent);
     }

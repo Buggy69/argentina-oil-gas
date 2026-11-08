@@ -118,6 +118,14 @@ export function compact(v, digits = 1) {
   return v.toPrecision(2);
 }
 
+/** Lower case with accents stripped, for search: "zuniga" finds "ZUÑIGA".
+ *  NFD splits each letter from its combining mark; the marks (U+0300–U+036F)
+ *  are then removed. Twin of fold() in app.js, written with escapes here so no
+ *  editor or re-encoding can corrupt the character range. */
+export function fold(s) {
+  return String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+}
+
 /** Full number with thousands separators — for tables and tooltips. */
 export function num(v, digits = 0) {
   if (v == null || Number.isNaN(v)) return '—';

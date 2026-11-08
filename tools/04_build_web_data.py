@@ -442,6 +442,53 @@ def main() -> int:
         (FORMAT parquet, COMPRESSION zstd)
     """)
 
+    # ------------------------------------------------------------- 3c ------
+    # Tier B, part 4: every horizontal well's history, on a months-on-production
+    # axis — for the Compare-wells view.
+    #
+    # WHY PER-WELL ROWS AND NOT MORE PRE-COMPUTED PERCENTILES
+    # The type curves above are percentiles per fixed group, and pooling groups
+    # averages percentiles, which is only an approximation. Comparing a target
+    # well against "its own field, per 1,000 m of lateral" needs a reference set
+    # chosen at view time, and exact percentiles over it. Horizontal wells are
+    # few (2,819) and short-lived, so ALL their well-months are ~144k rows —
+    # about the size of the cube. Shipping them whole lets the browser compute
+    # any reference exactly instead of approximating a pre-baked one.
+    #
+    # Same indexing as the type curves (months since first production, 0-119),
+    # so a well here and the same well in a type curve sit at the same x. The
+    # calendar month rides along so a daily rate can divide by that month's
+    # own days rather than an average month. Lateral length, field and
+    # operator are NOT repeated: wells_slim already carries them per well.
+    print("building horizontal-well histories …")
+    hz_path = SITE / "hz_monthly.parquet"
+    con.execute(f"""
+        COPY (
+            SELECT p.idpozo,
+                   date_diff('month', a.first_prod_month, p.fecha)::SMALLINT
+                       AS month_on_prod,
+                   p.fecha,
+                   p.prod_pet  AS oil_m3,
+                   p.prod_gas  AS gas_e3m3,
+                   p.prod_agua AS water_m3
+            FROM prod_monthly p
+            JOIN well_attrs a USING (idpozo)
+            WHERE a.trajectory_class = 'Horizontal'
+              AND a.first_prod_month IS NOT NULL
+              AND p.fecha >= a.first_prod_month
+              AND date_diff('month', a.first_prod_month, p.fecha) <= 119
+            ORDER BY p.idpozo, month_on_prod
+        )
+        TO '{hz_path.as_posix()}'
+        (FORMAT parquet, COMPRESSION zstd)
+    """)
+    hz_rows = con.execute(
+        f"SELECT count(*) FROM read_parquet('{hz_path.as_posix()}')").fetchone()[0]
+    hz_wells = con.execute(
+        f"SELECT count(DISTINCT idpozo) FROM read_parquet('{hz_path.as_posix()}')"
+    ).fetchone()[0]
+    print(f"  hz_monthly rows: {hz_rows:,} across {hz_wells:,} horizontal wells")
+
     # ------------------------------------------------------------- dims ----
     # Every table has now registered its label tables, so the sidecar can be
     # written exactly once, here.
@@ -577,6 +624,8 @@ def main() -> int:
         ("typecurve.parquet (tier B, lazy)",
          (SITE / "typecurve.parquet").stat().st_size, 6 * 1_048_576,
          f"{tc_rows:,} rows, operator/formation/block aware"),
+        ("hz_monthly.parquet (tier B, lazy)", hz_path.stat().st_size,
+         3 * 1_048_576, f"{hz_rows:,} rows, {hz_wells:,} horizontal wells"),
         (f"wells/ (tier C, {tier_c_buckets} buckets)", tier_c_total,
          B["tier_c_max_total_mb"] * 1_048_576, ""),
         ("largest tier C bucket", tier_c_max, B["tier_c_max_file_mb"] * 1_048_576,
@@ -589,6 +638,7 @@ def main() -> int:
     over = (summary_gz > 200 * 1024
             or agg.stat().st_size > 8 * 1_048_576
             or wells_p.stat().st_size > 5 * 1_048_576
+            or hz_path.stat().st_size > 3 * 1_048_576
             or tier_c_total > B["tier_c_max_total_mb"] * 1_048_576
             or tier_c_max > B["tier_c_max_file_mb"] * 1_048_576
             or not agg_ok)
@@ -614,6 +664,9 @@ def main() -> int:
             "typecurve.parquet": {"bytes": (SITE / "typecurve.parquet").stat().st_size,
                                   "rows": tc_rows,
                                   "sha256": sha256(SITE / "typecurve.parquet")},
+            "hz_monthly.parquet": {"bytes": hz_path.stat().st_size,
+                                   "rows": hz_rows, "wells": hz_wells,
+                                   "sha256": sha256(hz_path)},
             "wells_buckets": tier_c,
         },
         "tier_c_layout": {

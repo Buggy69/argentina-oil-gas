@@ -192,6 +192,13 @@ page before being caught.
   have no calendar month, so they divide by the mean month (30.4375 d). Added
   after a user read a monthly-volume axis labelled only "m³" as m³/d (Nov 2026).
   Tiles, tables and CSVs are cumulative VOLUMES and never take the rate.
+- **Compare wells tab** (`views/compare.js`, `data/hz_monthly.parquet`): all
+  horizontal well-months on a months-on-production axis, ~138k rows. References
+  (VMUT horizontal; target's field) are EXACT percentiles computed in the
+  browser, not the pooled approximations of the type curves. Per-1,000 m mode
+  drops wells with lateral < 500 m and counts them. The filter bar does NOT
+  apply there (the reference follows the target), and the tab says so.
+  Method + verified numbers: `docs/compare_wells_method.md`.
 - Production gaps are NULL, not zero — keep them distinguishable in statistics.
 - **`p10` is the LOW value** (statistical convention, not the reserves one).
 - Real source defects, reported not cleaned: 43 negative oil months (retroactive

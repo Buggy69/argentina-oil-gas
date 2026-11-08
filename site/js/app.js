@@ -24,6 +24,7 @@ const VIEWS = {
   map:         () => import('./views/map.js?v=a9872ab70a'),
   statistics:  () => import('./views/statistics.js?v=a9872ab70a'),
   performance: () => import('./views/performance.js?v=a9872ab70a'),
+  compare:     () => import('./views/compare.js?v=a9872ab70a'),
   about:       () => import('./views/about.js?v=a9872ab70a'),
 };
 
@@ -59,7 +60,7 @@ const WELLS_DETAIL = {
 };
 
 /** Views that read anything from WELLS_DETAIL. */
-const NEEDS_WELL_DETAIL = new Set(['map', 'statistics', 'performance']);
+const NEEDS_WELL_DETAIL = new Set(['map', 'statistics', 'performance', 'compare']);
 /** Views that break the cube down by a dimension outside CUBE_CORE. */
 const NEEDS_CUBE_DETAIL = new Set(['explorer']);
 
@@ -134,6 +135,24 @@ ctx.ensureTypecurve = async () => {
     })();
   }
   return typecurvePromise;
+};
+
+/* Every horizontal well's monthly history on a months-on-production axis
+   (1.4 MB). Only the Compare-wells view reads it, so it is fetched on the
+   first visit there and never on the critical path. */
+let hzPromise = null;
+ctx.ensureHz = async () => {
+  if (!hzPromise) {
+    hzPromise = (async () => {
+      const { loadTable } = await import('./store.js?v=a9872ab70a');
+      ctx.hz = await loadTable('data/hz_monthly.parquet', {
+        idpozo: 'num', month_on_prod: 'num', fecha: 'date',
+        oil_m3: 'num', gas_e3m3: 'num', water_m3: 'num',
+      });
+      return ctx.hz;
+    })();
+  }
+  return hzPromise;
 };
 
 let cubeDetailPromise = null;
@@ -443,6 +462,7 @@ async function renderView(force = false) {
         + 'data…</p></div>';
       if (NEEDS_WELL_DETAIL.has(name)) await ctx.ensureWellDetail();
       if (name === 'performance') await ctx.ensureTypecurve();
+      if (name === 'compare') await ctx.ensureHz();
       if (NEEDS_CUBE_DETAIL.has(name)) await ctx.ensureCubeDetail();
     }
     current = { name, module: mod };
