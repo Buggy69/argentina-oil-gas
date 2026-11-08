@@ -98,6 +98,18 @@ export function baseOption() {
   };
 }
 
+/**
+ * The unit printed at the top of a y-axis, e.g. "m³/d".
+ *
+ * A screenshot carries the axis but not the card's note, and an axis reading
+ * just "3 M" was taken as a daily rate when it was a monthly volume. Spread
+ * into `yAxis`, and give the grid ~30 px of top room so the name has a place.
+ */
+export function axisUnit(unit) {
+  return { name: unit, nameLocation: 'end', nameGap: 12,
+           nameTextStyle: { color: css('--ink-2'), fontSize: 11, align: 'left' } };
+}
+
 /** Deep merge good enough for option objects (plain objects and arrays only). */
 export function merge(a, b) {
   const out = Array.isArray(a) ? a.slice() : { ...a };

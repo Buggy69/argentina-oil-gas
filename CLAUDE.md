@@ -185,6 +185,13 @@ page before being caught.
   (91% water cut), plus 7.1 billion m³ injected — more volume than the oil.
 - Formation codes map 1:1 to names (77 of them), so `VMUT` displays as
   `VMUT (Vaca Muerta)`. The pairs are emitted by the build, not hard-coded.
+- **Time series default to DAILY RATE** (monthly volume ÷ calendar days of that
+  month; `perDay()` in format.js). This reproduces the publisher's own
+  `total_diario` / `kbbl_diario` columns exactly (Nov 2025: 136,622.65 m³/d =
+  859.33 kbbl/d). `r=month` in the URL switches to monthly volumes. Type curves
+  have no calendar month, so they divide by the mean month (30.4375 d). Added
+  after a user read a monthly-volume axis labelled only "m³" as m³/d (Nov 2026).
+  Tiles, tables and CSVs are cumulative VOLUMES and never take the rate.
 - Production gaps are NULL, not zero — keep them distinguishable in statistics.
 - **`p10` is the LOW value** (statistical convention, not the reserves one).
 - Real source defects, reported not cleaned: 43 negative oil months (retroactive

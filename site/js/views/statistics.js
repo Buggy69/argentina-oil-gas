@@ -11,7 +11,7 @@
 
 import { getSource, selectRows } from '../query.js?v=a9872ab70a';
 import { queryFilters } from '../state.js?v=a9872ab70a';
-import { compact, num, convert, units, esc, pct } from '../format.js?v=a9872ab70a';
+import { compact, num, convert, units, esc, pct, axisNum } from '../format.js?v=a9872ab70a';
 import { draw, baseOption, merge, barSeries, lineSeries } from '../charts.js?v=a9872ab70a';
 import { describe, histogram, lorenz, correlationMatrix, topShare } from '../stats.js?v=a9872ab70a';
 import { label as i18nLabel } from '../i18n.js?v=a9872ab70a';
@@ -199,7 +199,7 @@ export function update(root, ctx) {
       axisLabel: { interval: Math.ceil(h.bins.length / 8) } },
     yAxis: { type: 'value', name: 'wells', nameTextStyle: { fontSize: 11,
       color: getComputedStyle(document.documentElement).getPropertyValue('--ink-muted').trim() },
-      axisLabel: { formatter: v => compact(v, 0) } },
+      axisLabel: { formatter: axisNum } },
     series: [barSeries('wells', h.bins.map(b => b.n), s1)],
   }));
 

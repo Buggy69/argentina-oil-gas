@@ -12,8 +12,8 @@
 import { loadTable, loadJSON, monthLabel } from './store.js?v=a9872ab70a';
 import { registerSource, getSource } from './query.js?v=a9872ab70a';
 import { state, onChange, readHash, setView, toggleFilter, clearFilters,
-         setOilfield, setMonthRange, activeFilterCount } from './state.js?v=a9872ab70a';
-import { setOilfieldUnits, units, num, esc } from './format.js?v=a9872ab70a';
+         setOilfield, setMonthly, setMonthRange, activeFilterCount } from './state.js?v=a9872ab70a';
+import { setOilfieldUnits, setDailyRate, units, num, esc } from './format.js?v=a9872ab70a';
 import { label, setFormationNames } from './i18n.js?v=a9872ab70a';
 import { resizeAll, disposeAll } from './charts.js?v=a9872ab70a';
 import { FACETS, paintSelection } from './caption.js?v=a9872ab70a';
@@ -478,6 +478,8 @@ async function boot() {
   readHash();
   setOilfieldUnits(state.oilfield);
   document.getElementById('unit-toggle').checked = state.oilfield;
+  setDailyRate(!state.monthly);
+  document.getElementById('monthly-toggle').checked = state.monthly;
 
   for (const b of document.querySelectorAll('.tabs button')) {
     b.addEventListener('click', () => setView(b.dataset.view));
@@ -485,9 +487,16 @@ async function boot() {
   document.getElementById('reset-filters').addEventListener('click', () => {
     clearFilters(); syncFilterBar();
   });
+  // Formatter flag FIRST, then state: setOilfield/setMonthly emit, and the
+  // re-render they trigger runs synchronously, so it must already see the new
+  // unit, or it draws the previous one.
   document.getElementById('unit-toggle').addEventListener('change', (e) => {
-    setOilfield(e.target.checked);
     setOilfieldUnits(e.target.checked);
+    setOilfield(e.target.checked);
+  });
+  document.getElementById('monthly-toggle').addEventListener('change', (e) => {
+    setDailyRate(!e.target.checked);
+    setMonthly(e.target.checked);
   });
 
   const detail = document.getElementById('boot-detail');
@@ -589,7 +598,16 @@ async function boot() {
 
   buildFilterBar();
   onChange(() => { syncFilterBar(); renderView(); });
-  window.addEventListener('hashchange', () => { readHash(); syncFilterBar(); renderView(true); });
+  window.addEventListener('hashchange', () => {
+    readHash();
+    // A pasted link can change the unit or time basis too; the formatter
+    // flags and checkboxes have to follow the state it brings.
+    setOilfieldUnits(state.oilfield);
+    document.getElementById('unit-toggle').checked = state.oilfield;
+    setDailyRate(!state.monthly);
+    document.getElementById('monthly-toggle').checked = state.monthly;
+    syncFilterBar(); renderView(true);
+  });
 
   await renderView(true);
   performance.mark('interactive');

@@ -7,10 +7,13 @@
 
 import { query } from '../query.js?v=a9872ab70a';
 import { state, queryFilters } from '../state.js?v=a9872ab70a';
-import { compact, num, convert, units, pct } from '../format.js?v=a9872ab70a';
-import { draw, baseOption, merge, areaSeries, lineSeries, makeScale, legendHTML }
-  from '../charts.js?v=a9872ab70a';
-import { monthLabel } from '../store.js?v=a9872ab70a';
+import { compact, num, convert, units, pct, perDay, axisNum } from '../format.js?v=a9872ab70a';
+import { draw, baseOption, merge, areaSeries, lineSeries, makeScale, legendHTML,
+         axisUnit } from '../charts.js?v=a9872ab70a';
+import { monthLabel, EPOCH_YEAR } from '../store.js?v=a9872ab70a';
+
+/** "2025-11" (summary.json's month key) -> the month index perDay() takes. */
+const ymIndex = ym => (+ym.slice(0, 4) - EPOCH_YEAR) * 12 + (+ym.slice(5, 7) - 1);
 import { label as i18nLabel } from '../i18n.js?v=a9872ab70a';
 
 /**
@@ -53,8 +56,8 @@ export function renderFromSummary(root, ctx) {
     : [...new Set((s.basin_monthly || []).map(r => r.cuenca))]);
 
   for (const [id, key, conv, unit] of [
-    ['ov-oil', 'oil_m3', convert.oil, units.oil()],
-    ['ov-gas', 'gas_e3m3', convert.gas, units.gas()],
+    ['ov-oil', 'oil_m3', convert.oil, units.oilSeries()],
+    ['ov-gas', 'gas_e3m3', convert.gas, units.gasSeries()],
     // No water on the fast path: summary.json carries oil and gas per basin
     // only, and the water chart fills in when the cube lands a moment later.
   ]) {
@@ -67,13 +70,14 @@ export function renderFromSummary(root, ctx) {
       .map(([k, m]) => [k, [...m.values()].reduce((a, b) => a + (b || 0), 0)])
       .sort((a, b) => b[1] - a[1]).slice(0, 6).map(([k]) => k);
     draw(root.querySelector('#' + id), merge(baseOption(), {
-      legend: { show: false }, grid: { bottom: 12 },
+      legend: { show: false }, grid: { bottom: 12, top: 30 },
       tooltip: { valueFormatter: v => compact(v, 1) + ' ' + unit },
       xAxis: { type: 'category', data: months,
                axisLabel: { interval: Math.ceil(months.length / 8) } },
-      yAxis: { type: 'value', axisLabel: { formatter: v => compact(v, 0) } },
+      yAxis: { type: 'value', ...axisUnit(unit), axisLabel: { formatter: axisNum } },
       series: shown.map(b => areaSeries(
-        b, months.map(m => conv(byBasin.get(b).get(m) || 0)), scale(b))),
+        b, months.map(m => conv(perDay(byBasin.get(b).get(m) || 0, ymIndex(m)))),
+        scale(b))),
     }));
     root.querySelector('#' + id + '-legend').innerHTML =
       legendHTML(shown.map(b => ({ label: i18nLabel('cuenca', b), color: scale(b) })));
@@ -92,7 +96,7 @@ export function renderFromSummary(root, ctx) {
     tooltip: { valueFormatter: v => num(v) + ' wells' },
     xAxis: { type: 'category', data: nat.map(r => r.ym),
              axisLabel: { interval: Math.ceil(nat.length / 8) } },
-    yAxis: { type: 'value', axisLabel: { formatter: v => compact(v, 0) } },
+    yAxis: { type: 'value', axisLabel: { formatter: axisNum } },
     series: [lineSeries('Producing wells', nat.map(r => r.wells_producing),
       getComputedStyle(document.documentElement).getPropertyValue('--s1').trim())],
   }));
@@ -105,7 +109,8 @@ export function render(root, ctx, skipUpdate = false) {
       <section class="card half">
         <h2 id="ov-oil-title">Oil production by basin</h2>
         <p class="selection" data-selection></p>
-        <p class="note">Monthly, stacked. Unit: <span data-unit="oil"></span>.</p>
+        <p class="note">Stacked. <span data-unit="seriesBasis"></span>, in
+           <span data-unit="oilSeries"></span>.</p>
         <div id="ov-oil" class="chart"></div>
         <div id="ov-oil-legend"></div>
         <p class="source">Source: Secretaría de Energía (Capítulo IV) via petrodb · CC BY 4.0</p>
@@ -113,7 +118,8 @@ export function render(root, ctx, skipUpdate = false) {
       <section class="card half">
         <h2 id="ov-gas-title">Gas production by basin</h2>
         <p class="selection" data-selection></p>
-        <p class="note">Monthly, stacked. Unit: <span data-unit="gas"></span>.
+        <p class="note">Stacked. <span data-unit="seriesBasis"></span>, in
+           <span data-unit="gasSeries"></span>.
            Shown separately from oil — the two are different measures on different
            scales, and a shared axis would be arbitrary.</p>
         <div id="ov-gas" class="chart"></div>
@@ -123,7 +129,8 @@ export function render(root, ctx, skipUpdate = false) {
       <section class="card half">
         <h2 id="ov-water-title">Produced water by basin</h2>
         <p class="selection" data-selection></p>
-        <p class="note">Monthly, stacked. Unit: <span data-unit="water"></span>.
+        <p class="note">Stacked. <span data-unit="seriesBasis"></span>, in
+           <span data-unit="waterSeries"></span>.
            <span id="ov-water-ratio"></span></p>
         <div id="ov-water" class="chart"></div>
         <div id="ov-water-legend"></div>
@@ -240,9 +247,9 @@ export function update(root, ctx) {
   }
 
   for (const [id, measure, conv, unit] of [
-    ['ov-oil', 'oil_m3', convert.oil, units.oil()],
-    ['ov-gas', 'gas_e3m3', convert.gas, units.gas()],
-    ['ov-water', 'water_m3', convert.water, units.water()],
+    ['ov-oil', 'oil_m3', convert.oil, units.oilSeries()],
+    ['ov-gas', 'gas_e3m3', convert.gas, units.gasSeries()],
+    ['ov-water', 'water_m3', convert.water, units.waterSeries()],
   ]) {
     const rows = query({
       source: 'cube', filters: f, groupBy: ['fecha', 'cuenca'],
@@ -261,15 +268,15 @@ export function update(root, ctx) {
       .sort((a, b) => b[1] - a[1]).map(([k]) => k);
     const shown = ranked.slice(0, 6);
     const series = shown.map(b => areaSeries(
-      b, months.map(m => conv(byBasin.get(b).get(m) || 0)), scale(b)));
+      b, months.map(m => conv(perDay(byBasin.get(b).get(m) || 0, m))), scale(b)));
 
     draw(root.querySelector('#' + id), merge(baseOption(), {
       legend: { show: false },
-      grid: { bottom: 12 },
+      grid: { bottom: 12, top: 30 },
       tooltip: { valueFormatter: v => compact(v, 1) + ' ' + unit },
       xAxis: { type: 'category', data: months.map(monthLabel),
                axisLabel: { interval: Math.ceil(months.length / 8) } },
-      yAxis: { type: 'value', axisLabel: { formatter: v => compact(v, 0) } },
+      yAxis: { type: 'value', ...axisUnit(unit), axisLabel: { formatter: axisNum } },
       series,
     }));
     root.querySelector('#' + id + '-legend').innerHTML =
@@ -321,7 +328,7 @@ export function update(root, ctx) {
     tooltip: { valueFormatter: v => num(v) + ' wells' },
     xAxis: { type: 'category', data: wr.map(r => monthLabel(r.fecha)),
              axisLabel: { interval: Math.ceil(wr.length / 8) } },
-    yAxis: { type: 'value', axisLabel: { formatter: v => compact(v, 0) } },
+    yAxis: { type: 'value', axisLabel: { formatter: axisNum } },
     series: [lineSeries('Producing wells', wr.map(r => r.n),
       getComputedStyle(document.documentElement).getPropertyValue('--s1').trim())],
   }));
@@ -340,7 +347,7 @@ export function update(root, ctx) {
     grid: { left: 8, right: 60, top: 8, bottom: 24, containLabel: true },
     tooltip: { trigger: 'item',
       valueFormatter: v => compact(v, 2) + ' ' + units.oil() },
-    xAxis: { type: 'value', axisLabel: { formatter: v => compact(v, 0) } },
+    xAxis: { type: 'value', axisLabel: { formatter: axisNum } },
     yAxis: { type: 'category', data: ops.map(o => o.operator),
              axisLabel: { color: getComputedStyle(document.documentElement)
                .getPropertyValue('--ink-2').trim(), fontSize: 11, width: 160,

@@ -7,9 +7,10 @@
 
 import { query, unsupportedFilters, unmatchedValues } from '../query.js?v=a9872ab70a';
 import { queryFilters } from '../state.js?v=a9872ab70a';
-import { compact, num, convert, units, toCSV, downloadCSV, CITATION, esc } from '../format.js?v=a9872ab70a';
-import { draw, baseOption, merge, lineSeries, areaSeries, makeScale, legendHTML }
-  from '../charts.js?v=a9872ab70a';
+import { compact, num, convert, units, toCSV, downloadCSV, CITATION, esc,
+         perDay, axisNum } from '../format.js?v=a9872ab70a';
+import { draw, baseOption, merge, lineSeries, areaSeries, makeScale, legendHTML,
+         axisUnit } from '../charts.js?v=a9872ab70a';
 import { monthLabel } from '../store.js?v=a9872ab70a';
 import { label as i18nLabel } from '../i18n.js?v=a9872ab70a';
 
@@ -79,7 +80,8 @@ export function render(root, ctx) {
       <section class="card third">
         <h2>Oil — monthly</h2>
         <p class="selection" data-selection></p>
-        <p class="note">Unit: <span data-unit="oil"></span>. Top 8 categories;
+        <p class="note"><span data-unit="seriesBasis"></span>, in
+           <span data-unit="oilSeries"></span>. Top 8 categories;
            the remainder is folded into “Other” rather than given a ninth colour.</p>
         <div id="ex-oil" class="chart"></div>
         <div id="ex-oil-legend"></div>
@@ -88,7 +90,8 @@ export function render(root, ctx) {
       <section class="card third">
         <h2>Gas — monthly</h2>
         <p class="selection" data-selection></p>
-        <p class="note">Unit: <span data-unit="gas"></span>. Separate chart, one
+        <p class="note"><span data-unit="seriesBasis"></span>, in
+           <span data-unit="gasSeries"></span>. Separate chart, one
            axis — never a second y-scale.</p>
         <div id="ex-gas" class="chart"></div>
         <div id="ex-gas-legend"></div>
@@ -97,9 +100,10 @@ export function render(root, ctx) {
       <section class="card third">
         <h2>Water — monthly</h2>
         <p class="selection" data-selection></p>
-        <p class="note">Produced water, unit: <span data-unit="water"></span>.
-           Argentina produces about ten times as much water as oil, so it gets a
-           chart rather than a table column.</p>
+        <p class="note">Produced water. <span data-unit="seriesBasis"></span>, in
+           <span data-unit="waterSeries"></span>. Nationally, Argentina produces
+           about ten times as much water as oil, so it gets a chart rather than a
+           table column.</p>
         <div id="ex-water" class="chart"></div>
         <div id="ex-water-legend"></div>
       </section>
@@ -192,9 +196,9 @@ export function update(root, ctx) {
          .domain(dim).map(d => d.value));
 
   for (const [id, measure, conv, unit] of [
-    ['ex-oil', 'oil_m3', convert.oil, units.oil()],
-    ['ex-gas', 'gas_e3m3', convert.gas, units.gas()],
-    ['ex-water', 'water_m3', convert.water, units.water()],
+    ['ex-oil', 'oil_m3', convert.oil, units.oilSeries()],
+    ['ex-gas', 'gas_e3m3', convert.gas, units.gasSeries()],
+    ['ex-water', 'water_m3', convert.water, units.waterSeries()],
   ]) {
     const rows = query({
       source: src, filters: f, groupBy: ['fecha', dim],
@@ -216,17 +220,17 @@ export function update(root, ctx) {
     }
     const cats = top.concat(byCat.has('Other') ? ['Other'] : []);
     const series = cats.map(c => {
-      const data = months.map(m => conv(byCat.get(c)?.get(m) || 0));
+      const data = months.map(m => conv(perDay(byCat.get(c)?.get(m) || 0, m)));
       return stacked ? areaSeries(c, data, scale(c))
                      : lineSeries(c, data, scale(c));
     });
 
     draw(root.querySelector('#' + id), merge(baseOption(), {
-      legend: { show: false }, grid: { bottom: 12 },
+      legend: { show: false }, grid: { bottom: 12, top: 30 },
       tooltip: { valueFormatter: v => compact(v, 1) + ' ' + unit },
       xAxis: { type: 'category', data: months.map(monthLabel),
                axisLabel: { interval: Math.ceil(months.length / 8) } },
-      yAxis: { type: 'value', axisLabel: { formatter: v => compact(v, 0) } },
+      yAxis: { type: 'value', ...axisUnit(unit), axisLabel: { formatter: axisNum } },
       series,
     }));
     root.querySelector('#' + id + '-legend').innerHTML =

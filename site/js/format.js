@@ -13,6 +13,8 @@
    6.28981 exactly.
    =========================================================================== */
 
+import { EPOCH_YEAR } from './store.js?v=a9872ab70a';
+
 export const M3_TO_BBL = 6.28981;      // oil:  1 m³   -> bbl
 export const E3M3_TO_MCF = 35.3147;    // gas:  1 10³m³ -> Mcf
 
@@ -20,12 +22,75 @@ let oilfield = false;
 export function setOilfieldUnits(on) { oilfield = !!on; }
 export function usingOilfield() { return oilfield; }
 
+/* Time basis of the production time series: daily rate (default) or the
+   monthly volume the source actually stores.
+
+   WHY DAILY IS THE DEFAULT: engineers quote production as a rate. A user read
+   the Nov-2025 Neuquina shale bar — 2.75 M m³, a MONTH's volume — as m³ per
+   day, converted it to 17 Mbbl/d and concluded the data was 17× Argentina's
+   output. The data was right (577 kbbl/d); the axis said only "m³". Now every
+   series axis states its time basis, and the default matches how people read. */
+let dailyRate = true;
+export function setDailyRate(on) { dailyRate = !!on; }
+export function usingDailyRate() { return dailyRate; }
+
 export const units = {
   oil:   () => (oilfield ? 'bbl' : 'm³'),
   gas:   () => (oilfield ? 'Mcf' : '10³ m³'),
   water: () => (oilfield ? 'bbl' : 'm³'),
   length: () => (oilfield ? 'ft' : 'm'),
+  // Time-series units: the volume unit plus its time basis. Cumulative tiles,
+  // tables and CSV totals are volumes and keep using the plain units above.
+  oilSeries:   () => units.oil()   + (dailyRate ? '/d' : '/month'),
+  gasSeries:   () => units.gas()   + (dailyRate ? '/d' : '/month'),
+  waterSeries: () => units.water() + (dailyRate ? '/d' : '/month'),
+  // The phrase the chart notes use, so a note and its axis can never disagree.
+  seriesBasis: () => (dailyRate ? 'Daily average rate (monthly volume ÷ '
+                      + 'calendar days of that month)' : 'Volume per month'),
 };
+
+/**
+ * A monthly volume as the series should plot it: divided by the calendar
+ * days of that month in rate mode, unchanged in volume mode.
+ *
+ * Calendar days, not the well's effective producing hours, because that is
+ * how the publisher defines its own "promedio diario" column — and the
+ * verification report's check 5 reproduces that column from the monthly
+ * total this way. `monthIdx` counts months from January of EPOCH_YEAR, the
+ * same index `monthLabel()` in store.js reads.
+ */
+export function perDay(v, monthIdx) {
+  if (!dailyRate || v == null) return v;
+  const y = EPOCH_YEAR + Math.floor(monthIdx / 12), m = monthIdx % 12;
+  // Day 0 of the NEXT month is the last day of this one: its date is the
+  // month's length, leap years included, with no table to maintain.
+  return v / new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
+}
+
+/** Mean days per month (365.25 / 12) — for series with no calendar month,
+ *  such as type curves plotted against months on production. */
+export const MEAN_MONTH_DAYS = 30.4375;
+export function perMeanDay(v) {
+  return !dailyRate || v == null ? v : v / MEAN_MONTH_DAYS;
+}
+
+/**
+ * Axis tick label. Like compact(), but with as many decimals as the tick
+ * needs (up to 2, trailing zeros dropped).
+ *
+ * compact(v, 0) rounded 2.5 M to "3 M" and 1.5 M to "2 M", so an axis read
+ * "3 M, 3 M, 2 M, 2 M, 1 M" — duplicate labels on distinct gridlines, which
+ * made any value between them unreadable.
+ */
+export function axisNum(v) {
+  if (v == null || Number.isNaN(v)) return '';
+  const a = Math.abs(v);
+  const trim = x => String(+x.toFixed(2));
+  if (a >= 1e9) return trim(v / 1e9) + ' B';
+  if (a >= 1e6) return trim(v / 1e6) + ' M';
+  if (a >= 1e3) return trim(v / 1e3) + ' k';
+  return trim(v);
+}
 
 export const convert = {
   oil:   v => (v == null ? null : oilfield ? v * M3_TO_BBL : v),

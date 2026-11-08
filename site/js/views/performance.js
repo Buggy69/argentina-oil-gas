@@ -10,9 +10,10 @@
 
 import { query, getSource, selectRows, valueAt } from '../query.js?v=a9872ab70a';
 import { queryFilters } from '../state.js?v=a9872ab70a';
-import { compact, num, convert, units, esc } from '../format.js?v=a9872ab70a';
-import { draw, baseOption, merge, lineSeries, makeScale, legendHTML, palette }
-  from '../charts.js?v=a9872ab70a';
+import { compact, num, convert, units, esc, perDay, perMeanDay, axisNum,
+         usingDailyRate } from '../format.js?v=a9872ab70a';
+import { draw, baseOption, merge, lineSeries, makeScale, legendHTML, palette,
+         axisUnit } from '../charts.js?v=a9872ab70a';
 import { label as i18nLabel } from '../i18n.js?v=a9872ab70a';
 
 let splitBy = 'trajectory';
@@ -164,10 +165,13 @@ export function update(root, ctx) {
 
   // Oil, gas and water are different measures in different units — the fluid
   // selector switches the whole chart rather than adding a second y-axis.
-  const convFluid = fluid === 'gas' ? convert.gas
-                  : fluid === 'water' ? convert.water : convert.oil;
-  const fluidUnit = fluid === 'gas' ? units.gas()
-                  : fluid === 'water' ? units.water() : units.oil();
+  // Months on production have no calendar month, so a daily rate divides by
+  // the mean month length (perMeanDay) rather than that month's own days.
+  const convVol = fluid === 'gas' ? convert.gas
+                : fluid === 'water' ? convert.water : convert.oil;
+  const convFluid = v => convVol(perMeanDay(v));
+  const fluidUnit = fluid === 'gas' ? units.gasSeries()
+                  : fluid === 'water' ? units.waterSeries() : units.oilSeries();
 
   const series = [];
   // Only draw the P10–P90 band when comparing at most three groups; more than
@@ -204,7 +208,9 @@ export function update(root, ctx) {
     `${fluid[0].toUpperCase()}${fluid.slice(1)} type curves`;
   const pooled = rows.length > months.length * cats.length;
   root.querySelector('#pf-note').innerHTML =
-    `Median monthly ${fluid} per well, ${fluidUnit}, against months since that
+    `Median ${usingDailyRate()
+       ? `daily ${fluid} rate per well (that month's volume ÷ 30.44 days, the mean month)`
+       : `monthly ${fluid} volume per well`}, ${fluidUnit}, against months since that
      well's first production. ${num(totalWells)} wells enter at month 0.
      ${tcIgnored.length ? `<span style="color:var(--s4)">⚠ ${esc(tcIgnored.join(', '))}
        ${tcIgnored.length > 1 ? 'are' : 'is'} not a type-curve dimension, so
@@ -217,7 +223,7 @@ export function update(root, ctx) {
      Groups with fewer than five wells are not published.`;
 
   draw(root.querySelector('#pf-chart'), merge(baseOption(), {
-    legend: { show: false }, grid: { bottom: 14 },
+    legend: { show: false }, grid: { bottom: 14, top: 30 },
     tooltip: { trigger: 'axis',
       formatter: ps => {
         const shown = ps.filter(p => !/P10/.test(p.seriesName));
@@ -228,7 +234,7 @@ export function update(root, ctx) {
       name: 'months on production', nameLocation: 'middle', nameGap: 26,
       nameTextStyle: { fontSize: 11 },
       axisLabel: { interval: 5 } },
-    yAxis: { type: 'value', axisLabel: { formatter: v => compact(v, 0) } },
+    yAxis: { type: 'value', ...axisUnit(fluidUnit), axisLabel: { formatter: axisNum } },
     series,
   }));
   root.querySelector('#pf-legend').innerHTML =
@@ -258,8 +264,8 @@ export function update(root, ctx) {
       `${compact(p.data[1], 2)} ${units.oil()} cumulative` },
     xAxis: { type: 'log', name: 'proppant kg per m of lateral',
       nameLocation: 'middle', nameGap: 26, nameTextStyle: { fontSize: 11 },
-      axisLabel: { formatter: v => compact(v, 0) } },
-    yAxis: { type: 'log', axisLabel: { formatter: v => compact(v, 0) } },
+      axisLabel: { formatter: axisNum } },
+    yAxis: { type: 'log', axisLabel: { formatter: axisNum } },
     series: [...groups.entries()].map(([k, data]) => ({
       name: k, type: 'scatter', data, symbolSize: 6, large: true,
       itemStyle: { color: colorOf(k), opacity: 0.6 },
@@ -323,12 +329,15 @@ export function update(root, ctx) {
     el.classList.remove('is-busy');
     const s1 = palette()[0];
     draw(el, merge(baseOption(), {
-      legend: { show: false }, grid: { bottom: 12 },
-      tooltip: { trigger: 'axis', valueFormatter: v => compact(v, 1) + ' ' + units.oil() },
+      legend: { show: false }, grid: { bottom: 12, top: 30 },
+      tooltip: { trigger: 'axis',
+        valueFormatter: v => compact(v, 1) + ' ' + units.oilSeries() },
       xAxis: { type: 'category', data: hist.map(h => monthLabel(h.month)),
         axisLabel: { interval: Math.ceil(hist.length / 8) } },
-      yAxis: { type: 'value', axisLabel: { formatter: v => compact(v, 0) } },
-      series: [lineSeries('Oil', hist.map(h => convert.oil(h.oil)), s1)],
+      yAxis: { type: 'value', ...axisUnit(units.oilSeries()),
+               axisLabel: { formatter: axisNum } },
+      series: [lineSeries('Oil',
+        hist.map(h => convert.oil(perDay(h.oil, h.month))), s1)],
     }));
   };
 }

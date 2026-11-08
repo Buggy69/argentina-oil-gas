@@ -21,6 +21,7 @@ export const state = {
   filters: {},            // dimension -> [selected values]
   monthRange: null,       // {min, max} in month-index units
   oilfield: false,
+  monthly: false,         // series as monthly volume instead of daily rate
 };
 
 export function onChange(fn) { listeners.add(fn); return () => listeners.delete(fn); }
@@ -58,6 +59,7 @@ export function clearFilters() {
 
 export function setMonthRange(range) { state.monthRange = range; emit(); }
 export function setOilfield(on) { state.oilfield = !!on; emit(); }
+export function setMonthly(on) { state.monthly = !!on; emit(); }
 
 export function activeFilterCount() {
   return Object.values(state.filters).reduce((a, v) => a + v.length, 0)
@@ -88,6 +90,9 @@ function writeHash() {
   }
   if (state.monthRange) parts.push(`t=${state.monthRange.min}-${state.monthRange.max}`);
   if (state.oilfield) parts.push('u=field');
+  // Written only when not the default, so existing shared links stay valid
+  // and a link to the daily view is as short as before.
+  if (state.monthly) parts.push('r=month');
   const hash = `#/${state.view}` + (parts.length ? '?' + parts.join('&') : '');
   if (location.hash !== hash) history.replaceState(null, '', hash);
 }
@@ -99,6 +104,10 @@ export function readHash() {
   if (view) state.view = view;
   state.filters = {};
   state.monthRange = null;
+  // The URL is the whole state: a link without u=/r= means the defaults, so a
+  // pasted link cannot inherit units or time basis from the previous one.
+  state.oilfield = false;
+  state.monthly = false;
   if (!qs) return;
   for (const pair of qs.split('&')) {
     const [k, v] = pair.split('=');
@@ -108,6 +117,8 @@ export function readHash() {
       if (Number.isFinite(a) && Number.isFinite(b)) state.monthRange = { min: a, max: b };
     } else if (k === 'u') {
       state.oilfield = v === 'field';
+    } else if (k === 'r') {
+      state.monthly = v === 'month';
     } else {
       state.filters[decodeURIComponent(k)] = v.split('|').map(decodeURIComponent);
     }
