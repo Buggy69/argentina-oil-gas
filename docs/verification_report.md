@@ -3,7 +3,7 @@
 Every check prints the number it measured. Discrepancies are quantified and explained rather than reconciled away.
 
 Sources: petrodb (`sumpalabs/petrodb`, CC BY 4.0) and Secretaría de Energía de la Nación, `datos.energia.gob.ar` (CC BY 4.0).
-*Generated 2026-10-16 11:06 UTC from source driver `hf_parquet`.*
+*Generated 2026-11-08 02:16 UTC from source driver `hf_parquet`.*
 
 ## 1. Row counts against the published documentation
 
@@ -74,7 +74,7 @@ Gas: 2006-01 total 4,229,240.2 with published daily 136.4271. total/31 = 136,427
 |---|---|---|---|---|---|
 | oil | SHALE | 240 | 114,772,374 | 115,125,553 | -0.31% |
 | oil | TIGHT | 240 | 4,654,655 | 4,679,419 | -0.53% |
-| gas | SHALE | 240 | 140,259,572 | 140,324,780 | -0.05% |
+| gas | SHALE | 240 | 140,259,572 | 140,510,940 | -0.18% |
 | gas | TIGHT | 240 | 103,247,341 | 103,714,750 | -0.45% |
 
 
@@ -124,7 +124,7 @@ Wells with missing coordinates: **1,176**; outside Argentina's bounding box: **2
 |---|---|---|---|
 | CONVENCIONAL | 58,302 | 767 | 1.3% |
 | No informado | 21,859 | 29 | 0.1% |
-| NO CONVENCIONAL | 4,833 | 3,723 | 77.0% |
+| NO CONVENCIONAL | 4,833 | 3,779 | 78.2% |
 | SIN RESERVORIO | 418 | 0 | 0.0% |
 | NO DISCRIMINADO | 5 | 1 | 20.0% |
 
@@ -135,9 +135,9 @@ Trajectory is therefore **known for the unconventional population and unknown fo
 
 | lateral length | = 0 / null | 0–150 m | 150–600 m | ≥ 600 m |
 |---|---|---|---|---|
-| wells | 1,875 | 155 | 20 | 2,689 |
+| wells | 1,875 | 155 | 21 | 2,767 |
 
 
-The distribution is bimodal with an almost empty corridor: only **20** wells of 4,739 fall between 150 m and 600 m, while the horizontal mode sits at p25 = 1,910 m and p50 = 2,500 m. Any cut inside that corridor classifies the same wells, so **500 m** is chosen for roundness and the result is insensitive to it — moving the cut to 150 m or 1,000 m reclassifies at most 20 wells (0.4%).
+The distribution is bimodal with an almost empty corridor: only **21** wells of 4,818 fall between 150 m and 600 m, while the horizontal mode sits at p25 = 1,910 m and p50 = 2,500 m. Any cut inside that corridor classifies the same wells, so **500 m** is chosen for roundness and the result is insensitive to it — moving the cut to 150 m or 1,000 m reclassifies at most 21 wells (0.4%).
 
 First-production padrón covers **85,406 of 85,417 wells** (100.0%). Wells without it get no months-on-production axis and are excluded from type curves, not silently defaulted to zero.
