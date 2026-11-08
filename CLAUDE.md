@@ -199,8 +199,14 @@ page before being caught.
 - The weekly refresh (Friday 06:00 UTC) ran green Aug 14 → Oct 16, then failed
   three times on the portal block (lesson 21). The snapshot fallback was added
   2026-11-07; watch the next run to confirm it.
-- The portal snapshot only refreshes when someone runs `00_download_portal.py`
-  from a network that reaches the portal, then commits `data/portal_snapshot`.
+- The portal snapshot is refreshed by the **"PetroDB portal relay"** scheduled
+  task on Max's laptop (Thu 12:00, catches up if missed; log in
+  `data/raw/relay.log`). It pushes only when a `.gz` changed, and that push
+  triggers `refresh.yml`. Laptop off for weeks = official files stale for weeks.
+  The "pushed new snapshot" branch had not yet run live as of 2026-11-07.
+- **The petrodb (Hugging Face) data has not changed since Aug 2026** — still
+  ends 2025-12, 85,417 wells. Every refresh since then only moved portal-derived
+  numbers. Real 2026 production needs the portal's own per-well files (next step).
 - Deep-linking straight to `#/map` cold is ~8 s; via the Overview it is ~2 s.
 - `docs/` does not yet document the water columns in the type-curve and block
   cubes, nor `07_stamp_version.py`.
