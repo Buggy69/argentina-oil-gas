@@ -126,6 +126,18 @@ page before being caught.
 20. **`datos.energia.gob.ar` is reachable and scriptable** — the upstream
     publisher, used for verification, first-production dates and the fracture
     table. `raw.githubusercontent.com`, jsDelivr and npm are reachable too.
+21. **…but NOT from GitHub's runners, since late October 2026.** The Oct 23,
+    Oct 30 and Nov 6 refreshes all died on the first portal API call with
+    `TimeoutError: [Errno 110] Connection timed out` (~2 min, no byte
+    exchanged), while this machine still downloads everything in seconds. Fix:
+    `data/portal_snapshot/` (gzipped last-good copy, committed, ~5 MB).
+    `00_download_portal.py` tries the portal for 30 s per scheme; if that
+    fails it restores the snapshot, checks each file's sha256, and records
+    `served_from` in the manifest → PROVENANCE.json. Running the script
+    from any machine that CAN reach the portal refreshes the snapshot (gzip
+    `mtime=0`, so unchanged data = unchanged bytes = no commit). The
+    reconciliation is an inner join on month, so an older official series
+    just covers fewer months — it cannot produce a false FAIL.
 
 ---
 
@@ -184,7 +196,11 @@ page before being caught.
 
 ## Known gaps
 
-- The weekly refresh (Friday 06:00 UTC) has **never been observed running**.
+- The weekly refresh (Friday 06:00 UTC) ran green Aug 14 → Oct 16, then failed
+  three times on the portal block (lesson 21). The snapshot fallback was added
+  2026-11-07; watch the next run to confirm it.
+- The portal snapshot only refreshes when someone runs `00_download_portal.py`
+  from a network that reaches the portal, then commits `data/portal_snapshot`.
 - Deep-linking straight to `#/map` cold is ~8 s; via the Overview it is ~2 s.
 - `docs/` does not yet document the water columns in the type-curve and block
   cubes, nor `07_stamp_version.py`.

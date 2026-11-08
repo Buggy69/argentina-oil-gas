@@ -43,7 +43,9 @@ root = "data/raw/petrodb"
 base_url = "https://huggingface.co/datasets/sumpalabs/petrodb/resolve/main/argentina/"
 
 [source.http_portal]
-# The official Argentine open-data portal (CKAN). Reachable from everywhere.
+# The official Argentine open-data portal (CKAN). Since late Oct 2026 it times
+# out from GitHub's runners; the download then falls back to
+# data/portal_snapshot/ (see tools/00_download_portal.py).
 ckan_base = "https://datos.energia.gob.ar"
 
 [source.sql_database]

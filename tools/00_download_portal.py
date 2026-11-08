@@ -31,7 +31,9 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+import gzip
 import json
+import shutil
 import urllib.error
 import urllib.request
 from datetime import datetime, timezone
@@ -71,7 +73,22 @@ RESOURCES: dict[str, tuple[str, str, str]] = {
 }
 
 _TIMEOUT = 300
+# The API answer is a few KB, so a healthy portal replies in well under a
+# second. 30 s per attempt is generous for that, and it stops a dead connection
+# from burning the operating system's own ~2 min TCP give-up time per call.
+_API_TIMEOUT = 30
 _UA = {"User-Agent": "petrodb-dashboard/1.0 (open data pipeline)"}
+
+# Last good copy of the five portal files, gzipped and COMMITTED to the repo.
+#
+# WHY IT EXISTS: from late October 2026 the portal stopped accepting
+# connections from GitHub's cloud runners (the TCP connection times out before
+# a single byte is exchanged), while it still answers an ordinary Argentine
+# connection in seconds. A refresh that dies on the reference data would also
+# stop the production data refreshing, although that comes from a different
+# host that is still reachable. With the snapshot, an unreachable portal costs
+# freshness of the reference files only, and says so in PROVENANCE.json.
+SNAPSHOT = path("data", "portal_snapshot")
 
 
 def ckan_resource(package_id: str, resource_id: str) -> dict:
@@ -80,11 +97,27 @@ def ckan_resource(package_id: str, resource_id: str) -> dict:
     Resolving through the API rather than hard-coding the download URL means a
     filename change upstream (they happen — accents get re-encoded) does not
     break the pipeline. The UUID is the stable identifier.
+
+    https first, then plain http: a filter that drops one port does not
+    necessarily drop the other, and the attempt costs at most _API_TIMEOUT.
     """
-    url = f"{CKAN}/api/3/action/package_show?id={package_id}"
-    req = urllib.request.Request(url, headers=_UA)
-    with urllib.request.urlopen(req, timeout=_TIMEOUT) as resp:
-        payload = json.load(resp)
+    base = f"{CKAN}/api/3/action/package_show?id={package_id}"
+    attempts = [base]
+    if base.startswith("https://"):
+        attempts.append("http://" + base[len("https://"):])
+
+    last: Exception | None = None
+    for url in attempts:
+        try:
+            req = urllib.request.Request(url, headers=_UA)
+            with urllib.request.urlopen(req, timeout=_API_TIMEOUT) as resp:
+                payload = json.load(resp)
+            break
+        except (urllib.error.URLError, OSError) as exc:
+            last = exc
+    else:
+        raise OSError(f"portal API unreachable: {last}")
+
     for res in payload["result"]["resources"]:
         if res["id"] == resource_id:
             return res
@@ -129,8 +162,75 @@ def download(url: str, dest: Path) -> int:
     raise OSError(f"could not download {url}: {last}")
 
 
+def save_snapshot(out: Path) -> None:
+    """Copy a fresh, complete download into the committed snapshot.
+
+    `mtime=0` and an empty embedded filename make the gzip output a pure
+    function of the content: by default gzip writes the current time into its
+    header, so identical data would produce different bytes every week and git
+    would record a meaningless 10 MB change each time. This way an unchanged
+    file is byte-identical and the commit step sees nothing to commit.
+    """
+    SNAPSHOT.mkdir(parents=True, exist_ok=True)
+    for name in RESOURCES:
+        with (out / name).open("rb") as src, \
+             open(SNAPSHOT / f"{name}.gz", "wb") as raw, \
+             gzip.GzipFile(filename="", fileobj=raw, mode="wb",
+                           compresslevel=9, mtime=0) as dst:
+            shutil.copyfileobj(src, dst)
+    shutil.copyfile(out / "_portal_manifest.json",
+                    SNAPSHOT / "_portal_manifest.json")
+    print(f"snapshot updated: {SNAPSHOT}")
+
+
+def restore_snapshot(out: Path, reason: Exception) -> int:
+    """Fall back to the committed copy when the portal cannot be reached.
+
+    The manifest of the snapshot is kept — its `fetched_at` and per-file
+    `last_modified` are the true age of the data — and gains a `served_from`
+    note, so PROVENANCE.json on the live site states that the reference files
+    are older than the production data. Each file is checked against the hash
+    recorded when it was downloaded, so a corrupted snapshot fails loudly
+    instead of feeding the verification step.
+    """
+    manifest_src = SNAPSHOT / "_portal_manifest.json"
+    if not manifest_src.exists():
+        print(f"::error::portal unreachable and no snapshot in {SNAPSHOT}: {reason}")
+        return 1
+    manifest = json.loads(manifest_src.read_text(encoding="utf-8"))
+
+    out.mkdir(parents=True, exist_ok=True)
+    for name, meta in manifest["resources"].items():
+        with gzip.open(SNAPSHOT / f"{name}.gz", "rb") as src, \
+             (out / name).open("wb") as dst:
+            shutil.copyfileobj(src, dst)
+        if sha256(out / name) != meta["sha256"]:
+            print(f"::error::snapshot file {name} does not match its recorded hash")
+            return 1
+
+    today = datetime.now(timezone.utc).date().isoformat()
+    manifest["served_from"] = (f"committed snapshot — portal unreachable on "
+                               f"{today} ({reason})")
+    (out / "_portal_manifest.json").write_text(
+        json.dumps(manifest, indent=2), encoding="utf-8")
+    # `::warning::` is a GitHub Actions annotation: it shows on the run's
+    # summary page without failing the run. Locally it is just a line of text.
+    print(f"::warning::portal unreachable — using snapshot fetched "
+          f"{manifest['fetched_at']} ({reason})")
+    return 0
+
+
 def main() -> int:
     out = path(CFG["paths"]["raw"], "portal")
+    try:
+        return fetch_live(out)
+    except (urllib.error.URLError, OSError) as exc:
+        # All-or-nothing: a half-fresh set (new fracture table, old padrón)
+        # would be harder to describe honestly than a set of one known age.
+        return restore_snapshot(out, exc)
+
+
+def fetch_live(out: Path) -> int:
     manifest: dict[str, object] = {
         "fetched_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "ckan_base": CKAN,
@@ -159,6 +259,7 @@ def main() -> int:
         json.dumps(manifest, indent=2), encoding="utf-8"
     )
     print(f"\nmanifest written: {out / '_portal_manifest.json'}")
+    save_snapshot(out)
     return 0
 
 

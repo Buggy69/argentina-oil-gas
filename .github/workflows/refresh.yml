@@ -79,7 +79,9 @@ jobs:
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git checkout -- config.toml
-          git add site/data site/PROVENANCE.json docs/
+          # data/portal_snapshot only changes when the portal was reachable and
+          # published something new; see tools/00_download_portal.py.
+          git add site/data site/PROVENANCE.json docs/ data/portal_snapshot
           if git diff --staged --quiet; then
             echo "no change in the published data"
           else
@@ -113,6 +115,8 @@ jobs:
                 '1. An upstream schema change — `02_verify.py` fails loudly on',
                 '   a renamed or retyped column rather than emptying a chart.',
                 '2. A reconciliation drift against the official series.',
-                '3. huggingface.co or datos.energia.gob.ar being unreachable.',
+                '3. huggingface.co being unreachable. (datos.energia.gob.ar',
+                '   being unreachable no longer fails the run — it falls back',
+                '   to data/portal_snapshot/ with a warning.)',
               ].join('\n')
             })
