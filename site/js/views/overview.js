@@ -103,14 +103,16 @@ export function render(root, ctx, skipUpdate = false) {
     <div class="tiles" id="ov-tiles"></div>
     <div class="grid" style="margin-top:16px">
       <section class="card half">
-        <h2>Oil production by basin</h2>
+        <h2 id="ov-oil-title">Oil production by basin</h2>
+        <p class="selection" data-selection></p>
         <p class="note">Monthly, stacked. Unit: <span data-unit="oil"></span>.</p>
         <div id="ov-oil" class="chart"></div>
         <div id="ov-oil-legend"></div>
         <p class="source">Source: Secretaría de Energía (Capítulo IV) via petrodb · CC BY 4.0</p>
       </section>
       <section class="card half">
-        <h2>Gas production by basin</h2>
+        <h2 id="ov-gas-title">Gas production by basin</h2>
+        <p class="selection" data-selection></p>
         <p class="note">Monthly, stacked. Unit: <span data-unit="gas"></span>.
            Shown separately from oil — the two are different measures on different
            scales, and a shared axis would be arbitrary.</p>
@@ -119,11 +121,10 @@ export function render(root, ctx, skipUpdate = false) {
         <p class="source">Source: Secretaría de Energía (Capítulo IV) via petrodb · CC BY 4.0</p>
       </section>
       <section class="card half">
-        <h2>Produced water by basin</h2>
+        <h2 id="ov-water-title">Produced water by basin</h2>
+        <p class="selection" data-selection></p>
         <p class="note">Monthly, stacked. Unit: <span data-unit="water"></span>.
-           Argentina produces roughly ten times as much water as oil — 6.9 billion
-           m³ against 674 million — so it belongs on the first screen, not in a
-           footnote.</p>
+           <span id="ov-water-ratio"></span></p>
         <div id="ov-water" class="chart"></div>
         <div id="ov-water-legend"></div>
         <p class="source">Source: Secretaría de Energía (Capítulo IV) via petrodb · CC BY 4.0</p>
@@ -131,12 +132,14 @@ export function render(root, ctx, skipUpdate = false) {
 
       <section class="card half">
         <h2>Unconventional share of oil production</h2>
+        <p class="selection" data-selection></p>
         <p class="note">Shale and tight as a percentage of total monthly oil.</p>
         <div id="ov-unconv" class="chart short"></div>
         <div id="ov-unconv-legend"></div>
       </section>
       <section class="card half">
         <h2>Producing wells</h2>
+        <p class="selection" data-selection></p>
         <p class="note">Wells reporting non-zero oil or gas in the month.
            Counted per month — these cannot be summed along time, because the
            same well recurs every month it produces.</p>
@@ -144,6 +147,7 @@ export function render(root, ctx, skipUpdate = false) {
       </section>
       <section class="card">
         <h2>Largest operators by cumulative oil</h2>
+        <p class="selection" data-selection></p>
         <p class="note">Attributed to the operator holding the well in each month.
            Top 12 of ${ctx.summary.domains ? '' : ''}the ranked operators; the
            remainder is grouped as “Other”.</p>
@@ -208,9 +212,32 @@ export function update(root, ctx) {
       <div class="sub">${sub}</div>
     </div>`).join('');
 
+  /* --- water against oil, for THIS selection -------------------------- */
+  // This sentence used to be a fixed national figure ("6.9 billion m³ against
+  // 674 million"), which a user rightly flagged as false under any filter.
+  // Both totals are already summed above, so the ratio is computed, not quoted.
+  // It is a volume ratio, m³ over m³, so it is the same in either unit system;
+  // only the two printed totals are converted.
+  root.querySelector('#ov-water-ratio').textContent = tot.oil > 0
+    ? `In this selection, water is ${num(tot.water / tot.oil, 1)}× the oil volume `
+      + `(${compact(convert.water(tot.water), 2)} ${units.water()} against `
+      + `${compact(convert.oil(tot.oil), 2)} ${units.oil()} of oil).`
+    : 'This selection produced no oil, so there is no water-to-oil ratio.';
+
   /* --- stacked areas -------------------------------------------------- */
   const basins = ctx.basins;                 // stable, sorted list
   const scale = makeScale(basins);
+
+  // "by basin" is wrong when only one basin is in view — the stack has a single
+  // layer — so the title names that basin instead.
+  const oneBasin = (state.filters.cuenca || []).length === 1
+    ? i18nLabel('cuenca', state.filters.cuenca[0]) : null;
+  for (const [id, what] of [['ov-oil-title', 'Oil production'],
+                            ['ov-gas-title', 'Gas production'],
+                            ['ov-water-title', 'Produced water']]) {
+    root.querySelector('#' + id).textContent =
+      oneBasin ? `${what} — ${oneBasin}` : `${what} by basin`;
+  }
 
   for (const [id, measure, conv, unit] of [
     ['ov-oil', 'oil_m3', convert.oil, units.oil()],

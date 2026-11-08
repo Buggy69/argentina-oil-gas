@@ -16,6 +16,7 @@ import { state, onChange, readHash, setView, toggleFilter, clearFilters,
 import { setOilfieldUnits, units, num, esc } from './format.js?v=a9872ab70a';
 import { label, setFormationNames } from './i18n.js?v=a9872ab70a';
 import { resizeAll, disposeAll } from './charts.js?v=a9872ab70a';
+import { FACETS, paintSelection } from './caption.js?v=a9872ab70a';
 
 const VIEWS = {
   overview:    () => import('./views/overview.js?v=a9872ab70a'),
@@ -26,22 +27,8 @@ const VIEWS = {
   about:       () => import('./views/about.js?v=a9872ab70a'),
 };
 
-/* Facets shown in the filter bar. `source` says which table the facet's domain
-   comes from — the cube for time-varying dimensions, wells for static ones. */
-const FACETS = [
-  ['cuenca', 'Basin', 'wells'],
-  ['provincia', 'Province', 'wells'],
-  ['area', 'Block / concession', 'wells'],
-  ['yacimiento', 'Field', 'wells'],
-  ['formation', 'Formation', 'wells'],
-  ['operator', 'Operator', 'wells'],
-  ['well_fluid', 'Oil / gas well', 'wells'],
-  ['trajectory_class', 'Trajectory', 'wells'],
-  ['trajectory', 'Trajectory (measured only)', 'wells'],
-  ['name_marker', 'Well name marker', 'wells'],
-  ['tipo_recurso', 'Resource type', 'wells'],
-  ['sub_tipo_recurso', 'Shale / tight', 'wells'],
-];
+// FACETS (the filter bar's dimensions and their names) lives in caption.js,
+// because the selection caption on every chart needs the same names.
 
 /* wells_slim is split in two.
    CORE is what the filter bar and the Overview need, and nothing else — it is
@@ -475,6 +462,7 @@ async function renderView(force = false) {
     current.root.classList.remove('is-busy');
   }
   refreshUnitLabels();
+  paintSelection(current.root);
   resizeAll();
 }
 
@@ -527,6 +515,7 @@ async function boot() {
       current = { name: 'overview', module: ov, root };
       ov.renderFromSummary(root, ctx);
       refreshUnitLabels();
+      paintSelection(root, { pending: true });
       // Honest self-measurement. Paint metrics from an automated or
       // backgrounded tab are unreliable (the browser throttles rendering when
       // the tab is not visible), so the app records when its own milestones

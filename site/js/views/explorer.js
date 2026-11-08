@@ -78,6 +78,7 @@ export function render(root, ctx) {
 
       <section class="card third">
         <h2>Oil — monthly</h2>
+        <p class="selection" data-selection></p>
         <p class="note">Unit: <span data-unit="oil"></span>. Top 8 categories;
            the remainder is folded into “Other” rather than given a ninth colour.</p>
         <div id="ex-oil" class="chart"></div>
@@ -86,6 +87,7 @@ export function render(root, ctx) {
 
       <section class="card third">
         <h2>Gas — monthly</h2>
+        <p class="selection" data-selection></p>
         <p class="note">Unit: <span data-unit="gas"></span>. Separate chart, one
            axis — never a second y-scale.</p>
         <div id="ex-gas" class="chart"></div>
@@ -94,6 +96,7 @@ export function render(root, ctx) {
 
       <section class="card third">
         <h2>Water — monthly</h2>
+        <p class="selection" data-selection></p>
         <p class="note">Produced water, unit: <span data-unit="water"></span>.
            Argentina produces about ten times as much water as oil, so it gets a
            chart rather than a table column.</p>
@@ -103,6 +106,7 @@ export function render(root, ctx) {
 
       <section class="card">
         <h2 id="ex-table-title">Breakdown</h2>
+        <p class="selection" data-selection></p>
         <p class="note">The table is the accessible twin of the charts above —
            every plotted value is readable here as a number.</p>
         <div class="scroll-x"><table class="data" id="ex-table"></table></div>

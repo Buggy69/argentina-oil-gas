@@ -58,6 +58,7 @@ export function render(root, ctx) {
 
       <section class="card">
         <h2 id="pf-title">Oil type curves</h2>
+        <p class="selection" data-selection></p>
         <p class="note" id="pf-note"></p>
         <div id="pf-chart" class="chart tall"></div>
         <div id="pf-legend"></div>
@@ -65,6 +66,7 @@ export function render(root, ctx) {
 
       <section class="card half">
         <h2>Completion intensity against outcome</h2>
+        <p class="selection" data-selection></p>
         <p class="note">Proppant per metre of lateral versus cumulative oil, one
           point per well. Unit of observation: one well.</p>
         <div id="pf-scatter" class="chart"></div>
@@ -73,6 +75,7 @@ export function render(root, ctx) {
 
       <section class="card half">
         <h2>Best wells in the selection</h2>
+        <p class="selection" data-selection></p>
         <p class="note">Click a column header to sort, again to reverse. Click a
           row to load that well's full monthly history — one small file fetched
           on demand, not the whole dataset.</p>

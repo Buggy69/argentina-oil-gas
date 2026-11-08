@@ -87,6 +87,7 @@ export async function render(root, ctx) {
       </section>
       <section class="card">
         <h2>Well locations</h2>
+        <p class="selection" data-selection></p>
         <p class="note" id="mp-note"></p>
         <div id="mp-chart" class="chart map"></div>
         <div id="mp-legend"></div>

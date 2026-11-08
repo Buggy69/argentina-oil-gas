@@ -62,6 +62,7 @@ export function render(root, ctx) {
 
       <section class="card">
         <h2>Descriptive statistics</h2>
+        <p class="selection" data-selection></p>
         <p class="note"><strong>p10 is the low value</strong> (statistical
           convention: p10 &lt; p50 &lt; p90). “Missing” counts wells with no
           value for this variable — never treated as zero.</p>
@@ -70,12 +71,14 @@ export function render(root, ctx) {
 
       <section class="card half">
         <h2>Distribution</h2>
+        <p class="selection" data-selection></p>
         <p class="note" id="st-hist-note"></p>
         <div id="st-hist" class="chart"></div>
       </section>
 
       <section class="card half">
         <h2>Concentration — Lorenz curve</h2>
+        <p class="selection" data-selection></p>
         <p class="note">How unevenly the selected variable is distributed across
           wells. The straight line is perfect equality; the further the curve
           sags below it, the more the total rests on a few wells.</p>
@@ -85,6 +88,7 @@ export function render(root, ctx) {
 
       <section class="card">
         <h2>Correlation between well-level variables</h2>
+        <p class="selection" data-selection></p>
         <p class="note">Unit of observation: <strong>one well</strong>. Pearson
           below the diagonal, Spearman (rank) above it. They are shown together
           on purpose — production data is heavily skewed, so a Pearson value can
