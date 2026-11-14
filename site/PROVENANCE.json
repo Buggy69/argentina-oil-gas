@@ -1,13 +1,106 @@
 {
-  "generated": "2026-11-08T02:17:24+00:00",
+  "generated": "2026-11-14T01:50:38+00:00",
   "snapshot": "2026-08-10",
   "petrodb": {
-    "driver": "hf_parquet",
-    "base_url": "https://huggingface.co/datasets/sumpalabs/petrodb/resolve/main/argentina/",
-    "partitions": 20
+    "driver": "local_parquet",
+    "root": "/home/runner/work/argentina-oil-gas/argentina-oil-gas/data/raw/petrodb",
+    "files": {
+      "wells.parquet": {
+        "bytes": 8286353,
+        "sha256": "b70798071b3deed9eba4eca0667d90a1cb3be14bb3ed034b8411d1a661bbab0d"
+      },
+      "well_events.parquet": {
+        "bytes": 2117040,
+        "sha256": "1aea1e4d46fa3fbc9d3d643c7d5ae3e214aa6a7b03b5ac4326f573cfdb2bcca8"
+      },
+      "well_operator_history.parquet": {
+        "bytes": 611047,
+        "sha256": "4da9b9fe16e6fefa73f668dab1e4867f15f938f8301105c0a102f2d50c8078c3"
+      },
+      "monthly_production/anio=2006/data.parquet": {
+        "bytes": 6483231,
+        "sha256": "a07a483a08eea16287c52c50836d60e78d739c18e0aa1cf8ee946a3cbead5227"
+      },
+      "monthly_production/anio=2007/data.parquet": {
+        "bytes": 5952744,
+        "sha256": "e9a475dda1e6d07bd8fe6c218cf1f74db79dba65aabdcd64a0504653818fb868"
+      },
+      "monthly_production/anio=2008/data.parquet": {
+        "bytes": 6309250,
+        "sha256": "38f001cf95e89483a9c1136a9f83c91e25827696cab1641a14ee1539da3d7824"
+      },
+      "monthly_production/anio=2009/data.parquet": {
+        "bytes": 6568031,
+        "sha256": "e9db3396fd8a388c43ed4ec420056f998ca330bcea1c250a7726df3f735fba1d"
+      },
+      "monthly_production/anio=2010/data.parquet": {
+        "bytes": 6667218,
+        "sha256": "5b092f57a51e8cd5e22040cb42cfd93400f2cbeb105d8af600c7bb223420c599"
+      },
+      "monthly_production/anio=2011/data.parquet": {
+        "bytes": 6725828,
+        "sha256": "ff1146430241ffa9d56e603cfa810a8fbc5a67f1501dee1cad4d1e2f7bec91fb"
+      },
+      "monthly_production/anio=2012/data.parquet": {
+        "bytes": 6956857,
+        "sha256": "5e0ffa3b94a403fa7fd1cda4be36493d152d37c08c6e0f2ef42d360c2cdaccec"
+      },
+      "monthly_production/anio=2013/data.parquet": {
+        "bytes": 7232874,
+        "sha256": "20f054b71ed1b6a8963ea3a085e1138a33f078c4d575099f1079fe7ec38815b9"
+      },
+      "monthly_production/anio=2014/data.parquet": {
+        "bytes": 7457840,
+        "sha256": "882d5c47da262512626ea78b8dc9ee1f7146145b7e2cb6cf271bc6e845128b0d"
+      },
+      "monthly_production/anio=2015/data.parquet": {
+        "bytes": 7642903,
+        "sha256": "234244ccd4e7b335b16bded402ceeff27c633f2346ce615625156ac17c2eeed4"
+      },
+      "monthly_production/anio=2016/data.parquet": {
+        "bytes": 7824704,
+        "sha256": "41a19b590232674ef5ac87ba5d7ff7568b11014e394edbe9fa3b6dc9f6a4f711"
+      },
+      "monthly_production/anio=2017/data.parquet": {
+        "bytes": 7849257,
+        "sha256": "aaa4431fabb2be81f998476eea23d3698d2f53f696c48579f7d284100dae5a3c"
+      },
+      "monthly_production/anio=2018/data.parquet": {
+        "bytes": 7818652,
+        "sha256": "150cabcce80d1b582df419bbdcb7c8620795ef2711b0978f61d0520eec8d94f8"
+      },
+      "monthly_production/anio=2019/data.parquet": {
+        "bytes": 7935229,
+        "sha256": "e21ffea8814914e774f9fc50c0501f0c179e6e3ac78f31c36db2bb63f28dac2a"
+      },
+      "monthly_production/anio=2020/data.parquet": {
+        "bytes": 7683395,
+        "sha256": "5a7a64d358b2b405cfb2ad780c0be10cf43949ef7190a5d1d7168b4792410abc"
+      },
+      "monthly_production/anio=2021/data.parquet": {
+        "bytes": 7794949,
+        "sha256": "17d51942a524a02e753d921bd23064bff3ea9c0dbe0d3ffb993f4731ef745b7b"
+      },
+      "monthly_production/anio=2022/data.parquet": {
+        "bytes": 7852724,
+        "sha256": "10ac29296abaae174290c617524ec39d57a95b01d3c3524b220d1c8a86dc3b22"
+      },
+      "monthly_production/anio=2023/data.parquet": {
+        "bytes": 7914328,
+        "sha256": "0976703423e6d2c1dc6d48d9a1d29a76dc00fcaf037b9e487b21c24f47531fff"
+      },
+      "monthly_production/anio=2024/data.parquet": {
+        "bytes": 7990975,
+        "sha256": "42aa520c132e1dc84d49f469431ebeadc0e41cf187f3b868673f40b8517e7ef7"
+      },
+      "monthly_production/anio=2025/data.parquet": {
+        "bytes": 7973845,
+        "sha256": "a85eda1c7deffb358f21266598ba637093a3abed7062836426c30a658bdab008"
+      }
+    }
   },
   "portal": {
-    "fetched_at": "2026-11-08T02:03:19+00:00",
+    "fetched_at": "2026-11-12T15:00:04+00:00",
     "ckan_base": "https://datos.energia.gob.ar",
     "resources": {
       "serie_historica_petroleo.csv": {
@@ -34,10 +127,10 @@
         "package_id": "c846e79c-026c-4040-897f-1ad3543b407c",
         "resource_id": "5578dd48-d0dd-487e-8ddc-bd3ebb1afef0",
         "url": "http://datos.energia.gob.ar/dataset/c846e79c-026c-4040-897f-1ad3543b407c/resource/5578dd48-d0dd-487e-8ddc-bd3ebb1afef0/download/padrn-de-pozos-de-captulo-iv-con-fecha-de-primera-produccin.csv",
-        "last_modified": "2026-10-10T09:02:09.080582",
+        "last_modified": "2026-11-10T09:02:43.691128",
         "licence": "CC BY 4.0",
-        "bytes": 1171351,
-        "sha256": "fc99e349313b9563a07af192965d513be164fdb98070d29353a662463acb415d",
+        "bytes": 1172135,
+        "sha256": "9b76ac85b960fc371f5786a573b5caadf81fbff8c6779f184bb8221df281770b",
         "purpose": "First production month per idpozo \u2014 the months-on-production axis"
       },
       "capitulo_iv_pozos.csv": {
@@ -54,38 +147,44 @@
         "package_id": "71fa2e84-0316-4a1b-af68-7f35e41f58d7",
         "resource_id": "2280ad92-6ed3-403e-a095-50139863ab0d",
         "url": "http://datos.energia.gob.ar/dataset/71fa2e84-0316-4a1b-af68-7f35e41f58d7/resource/2280ad92-6ed3-403e-a095-50139863ab0d/download/datos-de-fractura-de-pozos-de-hidrocarburos-adjunto-iv-actualizacin-diaria.csv",
-        "last_modified": "2026-11-07T04:00:09.133754",
+        "last_modified": "2026-11-12T04:00:06.913626",
         "licence": "CC BY 4.0",
-        "bytes": 1271429,
-        "sha256": "e9129625c77d080bee9613bf6adaecef089890b112377813f4bdcd952fa5db88",
+        "bytes": 1271920,
+        "sha256": "ff95734bf485b1a27ecb75e3a44dda3035e5496805cf3970a28d19802bf03026",
         "purpose": "Per-fracture-job completion data \u2014 trajectory, stages, proppant, fluid"
       }
     },
-    "served_from": "committed snapshot \u2014 portal unreachable on 2026-11-08 (portal API unreachable: <urlopen error timed out>)"
+    "served_from": "committed snapshot \u2014 portal unreachable on 2026-11-14 (portal API unreachable: <urlopen error timed out>)"
   },
   "outputs": {
     "summary.json": {
-      "bytes": 245990,
-      "sha256": "35ef407338f443dc6d4a816e9e156d2e63c369fbdb6107c34debc5dd8a443c96"
+      "bytes": 245997,
+      "sha256": "a914f491a73afc8173e6029c341e377c72ef166871daf7b6c0981cacc3c5a5b6"
     },
     "agg_monthly.parquet": {
-      "bytes": 5812640,
+      "bytes": 5816210,
       "rows": 396439,
-      "sha256": "a2b8c9f3d69a3ba4283a8f85e12918e3fa2d6df0d4df6ecf0d844dcaa41c0c61"
+      "sha256": "250ba1cd179e0e23d362e18cbc9107a9c4d2c4c17c573c6ec32da59ccbdc11d1"
     },
     "wells_slim.parquet": {
-      "bytes": 3295483,
-      "sha256": "558b5378a78b61732f65f7bedbbf9837ff4f8aae23f218aad7286e1cd68e1fc0"
+      "bytes": 3295601,
+      "sha256": "9c6641a5e4b65b3dfdba5312e789b3fe4ed54163b90565ba97d175df26130c18"
     },
     "agg_block.parquet": {
-      "bytes": 4370028,
+      "bytes": 4366681,
       "rows": 346186,
-      "sha256": "9df085fefaa15b581905814e0a52d203ce253600f058d0bd1c19ff203429beee"
+      "sha256": "5dd9a948e8757b2cfae08fb5b4a95b3e155303e10f273278b39968bdb785c650"
     },
     "typecurve.parquet": {
-      "bytes": 3923340,
+      "bytes": 3922865,
       "rows": 151287,
-      "sha256": "d330449ed79ee5a6466192abe259b7fc98db36803d2f3fc44400196450b59262"
+      "sha256": "980dfc5a88c0f85ff1ad091b7c469974ea36a2872333b2debd313a2b3a573836"
+    },
+    "hz_monthly.parquet": {
+      "bytes": 1504483,
+      "rows": 138279,
+      "wells": 2703,
+      "sha256": "699044251f266fa53b48cf03927b353e402b930408417db687adee5a6b684269"
     },
     "wells_buckets": {
       "0": {
