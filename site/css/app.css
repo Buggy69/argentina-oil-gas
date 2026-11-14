@@ -147,6 +147,25 @@ a { color: var(--s1); }
 }
 .facet-search:focus { outline: 2px solid var(--s1); outline-offset: 1px; }
 .facet-list { display: block; }
+
+/* --- phones (checked 2026-11-13 at 360/390/412 px) ------------------------
+   1. The tab bar scrolled sideways with its scrollbar hidden, so "Well
+      performance" was cut mid-word and "Compare wells" / "About" were simply
+      invisible — nothing told you to swipe. On narrow screens the tabs wrap
+      onto a second row instead: everything is visible, nothing to discover.
+   2. A filter's dropdown is ≥260 px wide and was anchored to its own button,
+      so a button near the right edge (Field, Shale / tight) opened a panel
+      that ran off-screen. Here the panel anchors to the whole filter bar
+      instead (the .facet stops being the positioning context) and spans its
+      width. `top` stays auto, so it still opens right under its button.
+      `!important` beats the Period panel's inline min-width. */
+@media (max-width: 700px) {
+  .tabs { flex-wrap: wrap; overflow-x: visible; }
+  .tabs button { padding: 9px 10px; }
+  .filterbar-in { position: relative; }
+  .facet { position: static; }
+  .facet-panel { left: 16px; right: 16px; min-width: 0 !important; }
+}
 .filter-actions {
   display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
   margin-top: 9px; font-size: 13px; color: var(--ink-2);

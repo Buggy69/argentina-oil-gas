@@ -347,7 +347,30 @@ function buildFilterBar() {
 
   document.getElementById('filterbar').hidden = false;
   installDismissHandlers();
+  keepPanelsOnScreen();
   syncFilterBar();
+}
+
+/**
+ * A dropdown opens left-aligned under its button. For a button near the right
+ * edge that pushes the panel off-screen (seen at 1280 px: "Resource type" ran
+ * 24 px past the edge). When a panel opens, measure it; if it overflows, flip
+ * it to align with the button's RIGHT edge instead. Phones never reach this —
+ * there the CSS already spans the panel across the filter bar.
+ *
+ * `toggle` does not bubble, so the listener is installed in the capture phase
+ * on the bar itself: one listener for every facet, including future ones.
+ */
+function keepPanelsOnScreen() {
+  document.getElementById('filterbar').addEventListener('toggle', (e) => {
+    const d = e.target;
+    if (!d.classList?.contains('facet') || !d.open) return;
+    const p = d.querySelector('.facet-panel');
+    p.style.left = ''; p.style.right = '';          // measure from the default
+    if (p.getBoundingClientRect().right > document.documentElement.clientWidth - 8) {
+      p.style.left = 'auto'; p.style.right = '0';
+    }
+  }, true);
 }
 
 /**
