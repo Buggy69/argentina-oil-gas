@@ -138,6 +138,14 @@ page before being caught.
     `mtime=0`, so unchanged data = unchanged bytes = no commit). The
     reconciliation is an inner join on month, so an older official series
     just covers fewer months — it cannot produce a false FAIL.
+22. **HuggingFace rate-limits remote Parquet reads (HTTP 429), since Nov 2026.**
+    The 12 + 13 Nov refreshes died in `03_enrich.py`: DuckDB reading petrodb
+    straight off HF fires hundreds of small Range GETs. Fix: CI no longer uses
+    the `hf_parquet` driver. `tools/fetch_petrodb_hf.py` downloads the 23 files
+    whole (back-off, honours `Retry-After`, PAR1 check), `actions/cache` keeps
+    them (key `petrodb-hf-v1` — bump it if HF ever publishes new data), and CI
+    runs on `local_parquet` like the laptop. Failure email → Max brings it to
+    Claude; the run log needs a GitHub login (paste Enrich/Verify step text).
 
 ---
 

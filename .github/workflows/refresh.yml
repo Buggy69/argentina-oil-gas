@@ -54,19 +54,21 @@ jobs:
       - name: Install dependencies
         run: pip install duckdb pyarrow
 
-      - name: Point the pipeline at the cloud-reachable source
-        # The committed config uses the local_parquet driver, which reads files
-        # a human downloaded by hand. In CI there is no such folder, so switch
-        # to the driver that reads HuggingFace directly. This is the source
-        # abstraction earning its keep: one line, no code change.
-        run: |
-          python - <<'PY'
-          import re, pathlib
-          p = pathlib.Path('config.toml')
-          p.write_text(re.sub(r'^driver = .*$', 'driver = "hf_parquet"',
-                              p.read_text(encoding='utf-8'), count=1, flags=re.M),
-                       encoding='utf-8')
-          PY
+      # petrodb comes from HuggingFace. Until 2026-11-13 the pipeline read it
+      # remotely through DuckDB (hf_parquet driver) — hundreds of small Range
+      # GETs per run — and HF started answering "429 Too Many Requests"
+      # (runs of 12 + 13 Nov died in Enrich). Now: fetch each file whole,
+      # with back-off, cache it, and run on the same local_parquet driver as
+      # the laptop. petrodb is frozen (ends 2025-12), so the cache key is
+      # static; bump the suffix if HF ever publishes new data.
+      - name: Restore cached petrodb
+        uses: actions/cache@v4
+        with:
+          path: data/raw/petrodb
+          key: petrodb-hf-v1
+
+      - name: Fetch petrodb from HuggingFace (only files not cached)
+        run: python tools/fetch_petrodb_hf.py
 
       - name: Download official portal data
         run: python tools/00_download_portal.py
