@@ -466,6 +466,27 @@ function syncFilterBar() {
 }
 
 /* --- view routing -------------------------------------------------------- */
+
+/** Dimensions that only the block cube carries (no column in agg_monthly). */
+const BLOCK_ONLY = new Set(['area', 'yacimiento', 'name_marker', 'trajectory_class']);
+
+/**
+ * Decode whatever the active filters need, before any view queries.
+ *  - a filter on a CUBE_DETAIL column  -> the rest of the main cube
+ *  - a filter on a block-only column   -> the block cube
+ * Both are memoised, so after the first use this is a no-op that resolves at
+ * once. Views still check unsupportedFilters(), because some combinations
+ * (e.g. Field + Formation) exist in neither cube and must be reported.
+ */
+async function ensureFilterSources() {
+  const active = Object.entries(state.filters)
+    .filter(([, v]) => Array.isArray(v) && v.length).map(([k]) => k);
+  const jobs = [];
+  if (active.some(k => CUBE_DETAIL && k in CUBE_DETAIL)) jobs.push(ctx.ensureCubeDetail());
+  if (active.some(k => BLOCK_ONLY.has(k))) jobs.push(ctx.ensureBlockCube());
+  await Promise.all(jobs);
+}
+
 async function renderView(force = false) {
   const name = VIEWS[state.view] ? state.view : 'overview';
   const main = document.getElementById('main');
@@ -475,6 +496,15 @@ async function renderView(force = false) {
   }
 
   if (!ctx.ready) return;
+
+  // A filter must never be skipped because the column it needs has not been
+  // decoded yet. That is exactly what happened on the Overview until Nov 2026:
+  // Province, Formation, Oil/gas well, Trajectory and Resource type live in
+  // CUBE_DETAIL, which only the Explorer used to load, so the Overview's charts
+  // ignored them while the well-count tile (read from `wells`) moved — a user
+  // reported it. Load what the active filters need first, then draw.
+  if (current?.root && current.name === name) current.root.classList.add('is-busy');
+  await ensureFilterSources();
 
   if (force || !current || current.name !== name) {
     const mod = await VIEWS[name]();

@@ -403,7 +403,7 @@ export function update(root, ctx) {
   };
 
   const chartFor = (el, pick, x, unit) => draw(root.querySelector(el), merge(baseOption(), {
-    legend: { show: false }, grid: { bottom: 14, top: 30 },
+    legend: { show: false }, grid: { bottom: 42, top: 30 },   // room for the axis title
     tooltip: { trigger: 'axis', formatter: ps => {
       const shown = ps.filter(p => !/P10/.test(p.seriesName) && p.value != null);
       return `Month ${shown[0]?.axisValue ?? ''}<br>` + shown.map(p =>

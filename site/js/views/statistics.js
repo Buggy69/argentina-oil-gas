@@ -208,7 +208,7 @@ export function update(root, ctx) {
   const s2 = getComputedStyle(document.documentElement).getPropertyValue('--s2').trim();
   const axisColor = getComputedStyle(document.documentElement).getPropertyValue('--axis').trim();
   draw(root.querySelector('#st-lorenz'), merge(baseOption(), {
-    legend: { show: false }, grid: { bottom: 12 },
+    legend: { show: false }, grid: { bottom: 42 },   // room for the axis title
     tooltip: { trigger: 'axis',
       formatter: ps => ps.map(p =>
         `${p.seriesName}: ${p.value[1].toFixed(1)}% of total from the lowest ${p.value[0].toFixed(0)}% of wells`).join('<br>') },

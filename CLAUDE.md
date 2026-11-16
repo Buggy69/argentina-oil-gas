@@ -56,6 +56,15 @@ page before being caught.
    capped operators at top-25 so selecting a smaller one drew a blank chart; and
    facet lists were capped at 60 values so most blocks were unselectable.
    `unsupportedFilters()` and `unmatchedValues()` now exist to make this loud.
+5b. **…and lazy loading re-created it (found by a user, Nov 2026).** The
+   Overview ignored 10 of 12 filters: CUBE_DETAIL columns were decoded only
+   for the Explorer, and Block/Field/trajectory class live only in agg_block.
+   Fix: `ensureFilterSources()` in app.js loads what active filters need
+   before ANY view draws; the Overview routes to the block cube and names
+   anything still unapplied on the card. **Run `tools/check_site_filters.py`
+   before every release** — it ticks each filter and compares the oil tile
+   with DuckDB. Its first version passed on the broken live site having
+   tested nothing (facet list empty on a cold load) — it now fails on that.
 6. **Report the distribution, not the extreme.** The coordinate check first
    printed a max deviation of 0.287° and looked like a failure; the distribution
    showed 84,208 of 84,210 wells identical bit-for-bit and two revised outliers.

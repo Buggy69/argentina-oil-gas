@@ -148,6 +148,9 @@ a { color: var(--s1); }
 .facet-search:focus { outline: 2px solid var(--s1); outline-offset: 1px; }
 .facet-list { display: block; }
 
+/* A filter that a chart cannot honour is named on that chart (Nov 2026 fix). */
+.note.unapplied { color: var(--s4); }
+
 /* --- phones (checked 2026-11-13 at 360/390/412 px) ------------------------
    1. The tab bar scrolled sideways with its scrollbar hidden, so "Well
       performance" was cut mid-word and "Compare wells" / "About" were simply

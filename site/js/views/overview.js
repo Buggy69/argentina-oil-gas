@@ -5,7 +5,7 @@
    on one plot with two y-axes would invent a relationship the data does not
    contain. */
 
-import { query } from '../query.js?v=a9872ab70a';
+import { query, unsupportedFilters } from '../query.js?v=a9872ab70a';
 import { state, queryFilters } from '../state.js?v=a9872ab70a';
 import { compact, num, convert, units, pct, perDay, axisNum } from '../format.js?v=a9872ab70a';
 import { draw, baseOption, merge, areaSeries, lineSeries, makeScale, legendHTML,
@@ -104,6 +104,7 @@ export function renderFromSummary(root, ctx) {
 
 export function render(root, ctx, skipUpdate = false) {
   root.innerHTML = `
+    <p class="note unapplied" id="ov-tiles-warn" hidden></p>
     <div class="tiles" id="ov-tiles"></div>
     <div class="grid" style="margin-top:16px">
       <section class="card half">
@@ -165,11 +166,65 @@ export function render(root, ctx, skipUpdate = false) {
   if (!skipUpdate) update(root, ctx);
 }
 
+/** Dimensions only the block cube carries (Block, Field, Trajectory, name marker). */
+const BLOCK_ONLY = new Set(['area', 'yacimiento', 'name_marker', 'trajectory_class']);
+
+/** The filter bar's own label for a dimension, so a warning names it as the user sees it. */
+const labelOf = k =>
+  document.querySelector(`#filterbar details.facet[data-dim="${k}"]`)?.dataset.label || k;
+
+/**
+ * Write (or clear) the "not applied" line on the card that holds chart `id`.
+ * Silence would be the bug the user reported; an explicit line is the fix's
+ * second half for the combinations no cube can serve.
+ */
+function flagCard(root, id, names, reason) {
+  const card = root.querySelector('#' + id)?.closest('.card');
+  if (!card) return;
+  let el = card.querySelector('.unapplied');
+  if (!names.length) { if (el) el.remove(); return; }
+  if (!el) {
+    el = document.createElement('p');
+    el.className = 'note unapplied';
+    (card.querySelector('[data-selection]') || card.querySelector('h2')).after(el);
+  }
+  el.textContent = `⚠ Not applied to this chart: ${names.map(labelOf).join(', ')} — ${reason}`;
+}
+
 export function update(root, ctx) {
   const f = queryFilters('fecha');
 
+  /* --- which cube can answer this selection ---------------------------
+     The main cube has no Block / Field / trajectory-class column; the block
+     cube has those but no Province, Formation, Oil/gas well or resource type.
+     Pick the one the active filters need (app.js has already loaded it), and
+     report whatever it still cannot honour rather than drawing as if it did. */
+  const active = k => Array.isArray(f[k]) && f[k].length > 0;
+  const src = Object.keys(f).some(k => BLOCK_ONLY.has(k) && active(k)) && ctx.block
+    ? 'block' : 'cube';
+  const dropped = unsupportedFilters(src, f);
+  const WHY = 'the data behind it has no such breakdown together with your other filters.';
+  for (const id of ['ov-oil', 'ov-gas', 'ov-water', 'ov-wells', 'ov-ops']) {
+    flagCard(root, id, dropped, WHY);
+  }
+  // The unconventional share needs the resource subtype, which only the main
+  // cube carries — so under a block-only filter it cannot be computed at all.
+  const unconvOK = src === 'cube';
+  flagCard(root, 'ov-unconv',
+    unconvOK ? dropped : Object.keys(f).filter(k => BLOCK_ONLY.has(k) && active(k)),
+    unconvOK ? WHY : 'the data that carries this filter has no shale / tight '
+      + 'breakdown, so the share cannot be computed for that selection.');
+
   /* --- tiles ---------------------------------------------------------- */
-  const tot = query({ source: 'cube', filters: f, measures: [
+  // "Wells in selection" reads the well table, which honours every filter;
+  // the volume tiles read the cube, so they carry the same caveat as the charts.
+  const tw = root.querySelector('#ov-tiles-warn');
+  tw.hidden = !dropped.length;
+  tw.textContent = dropped.length
+    ? `⚠ Oil, gas and unconventional tiles do not apply ${dropped.map(labelOf).join(', ')}`
+      + ' — no data source has that breakdown together with your other filters.'
+    : '';
+  const tot = query({ source: src, filters: f, measures: [
     { as: 'oil', col: 'oil_m3', agg: 'sum' },
     { as: 'gas', col: 'gas_e3m3', agg: 'sum' },
     { as: 'water', col: 'water_m3', agg: 'sum' },
@@ -189,7 +244,7 @@ export function update(root, ctx) {
   const unconvSel = Array.isArray(userSub) && userSub.length
     ? userSub.filter(v => UNCONV.includes(v))
     : UNCONV;
-  const unconv = unconvSel.length
+  const unconv = unconvOK && unconvSel.length
     ? (query({
         source: 'cube',
         filters: { ...f, sub_tipo_recurso: unconvSel },
@@ -210,8 +265,10 @@ export function update(root, ctx) {
      'sum over the selected months'],
     [`Cumulative gas (${units.gas()})`, compact(convert.gas(tot.gas), 2),
      'sum over the selected months'],
-    ['Unconventional oil', pct(tot.oil ? unconv.oil / tot.oil * 100 : 0),
-     `${num(horiz.n)} horizontal wells identified`],
+    ['Unconventional oil',
+     unconvOK ? pct(tot.oil ? unconv.oil / tot.oil * 100 : 0) : '—',
+     unconvOK ? `${num(horiz.n)} horizontal wells identified`
+              : 'not available with this filter (no shale / tight breakdown)'],
   ].map(([label, value, sub]) => `
     <div class="tile">
       <div class="label">${label}</div>
@@ -252,7 +309,7 @@ export function update(root, ctx) {
     ['ov-water', 'water_m3', convert.water, units.waterSeries()],
   ]) {
     const rows = query({
-      source: 'cube', filters: f, groupBy: ['fecha', 'cuenca'],
+      source: src, filters: f, groupBy: ['fecha', 'cuenca'],
       measures: [{ as: 'v', col: measure, agg: 'sum' }],
     });
     const months = [...new Set(rows.map(r => r.fecha))].sort((a, b) => a - b);
@@ -285,13 +342,13 @@ export function update(root, ctx) {
 
   /* --- unconventional share ------------------------------------------- */
   const totByMonth = new Map();
-  for (const r of query({ source: 'cube', filters: f, groupBy: ['fecha'],
+  if (unconvOK) for (const r of query({ source: 'cube', filters: f, groupBy: ['fecha'],
     measures: [{ as: 'v', col: 'oil_m3', agg: 'sum' }] })) totByMonth.set(r.fecha, r.v);
 
   const subScale = makeScale(['SHALE', 'TIGHT']);
   // Same intersection rule as the tile above: narrow the user's selection,
   // never replace it, so the percentage can never exceed 100.
-  const subRows = unconvSel.length ? query({
+  const subRows = unconvOK && unconvSel.length ? query({
     source: 'cube', filters: { ...f, sub_tipo_recurso: unconvSel },
     groupBy: ['fecha', 'sub_tipo_recurso'],
     measures: [{ as: 'v', col: 'oil_m3', agg: 'sum' }],
@@ -320,7 +377,7 @@ export function update(root, ctx) {
       .map(s => ({ label: s === 'SHALE' ? 'Shale' : 'Tight', color: subScale(s) })));
 
   /* --- producing wells ------------------------------------------------ */
-  const wr = query({ source: 'cube', filters: f, groupBy: ['fecha'],
+  const wr = query({ source: src, filters: f, groupBy: ['fecha'],
     measures: [{ as: 'n', col: 'wells_producing', agg: 'sum' }] })
     .sort((a, b) => a.fecha - b.fecha);
   draw(root.querySelector('#ov-wells'), merge(baseOption(), {
@@ -337,7 +394,7 @@ export function update(root, ctx) {
   // One series -> one colour for every bar. Colouring bars darker-where-bigger
   // would double-encode the length the bar already shows.
   const ops = query({
-    source: 'cube', filters: f, groupBy: ['operator'],
+    source: src, filters: f, groupBy: ['operator'],
     measures: [{ as: 'oil', col: 'oil_m3', agg: 'sum' }],
     orderBy: 'oil', limit: 12,
   }).reverse();

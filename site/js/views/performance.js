@@ -220,21 +220,100 @@ export function update(root, ctx) {
        true percentile — exact when the filter narrows to a single group.</em>` : ''}
      ${withBand ? 'Shaded band is P10–P90 across wells (p10 = low).'
                 : 'Bands are omitted above three groups — overlapping translucent bands stop being readable.'}
-     Groups with fewer than five wells are not published.`;
+     Groups with fewer than five wells are not published.
+     The strip under the curves shows how many wells stand behind each point, as a
+     percentage of that curve's largest count (exact numbers in the tooltip). A dashed line
+     marks a month where that count falls by a fifth or more. After it the curve
+     describes a different, smaller set of wells, so a drop there is a change of
+     population, not decline. Recent wells leave early because the data ends 2025-12.`;
 
-  draw(root.querySelector('#pf-chart'), merge(baseOption(), {
-    legend: { show: false }, grid: { bottom: 14, top: 30 },
+  /* --- how many wells stand behind each point -------------------------
+     A type curve is only "the median well" while the SET of wells is the same.
+     Production data ends 2025-12, so a 2024 vintage has at most ~20 months of
+     history and leaves the curve after that; if it was the strongest group the
+     median collapses although no well declined. A user saw exactly this
+     (Shale oil, "Unknown" trajectory: two 2024 YPF groups end at month 16 and
+     the curve falls from ~23 to ~1 m³/d at month 17). So the well count is
+     drawn in a strip under the curves, and every month where a curve's count
+     falls by ≥20 % (and by ≥3 wells) gets a dashed line in that curve's colour.
+     Ordinary censoring of a large curve loses a few percent per month and stays
+     well below it. A loss spread over several months (same example, months 7–9:
+     68→62→57 wells) gets no line but is plain to see in the strip.
+     At most the two largest drops per curve, so six curves cannot bury the plot. */
+  const wellsOf = (c, x) => byCat.get(c)?.get(x)?.wells ?? 0;
+  const drops = [];
+  for (const c of cats) {
+    const found = [];
+    for (let i = 1; i < months.length; i++) {
+      const a = wellsOf(c, months[i - 1]), b = wellsOf(c, months[i]);
+      if (a > 0 && a - b >= 3 && (a - b) / a >= 0.2) found.push({ c, i, a, b });
+    }
+    found.sort((p, q) => (q.a - q.b) - (p.a - p.b));
+    drops.push(...found.slice(0, 2));
+  }
+  for (const c of cats) {
+    const own = drops.filter(d => d.c === c);
+    const line = series.find(s => s.name === c && s.type === 'line' && !s.stack);
+    if (!own.length || !line) continue;
+    line.markLine = {
+      symbol: 'none', silent: true,
+      lineStyle: { color: scale(c), type: 'dashed', width: 1, opacity: 0.9 },
+      label: { formatter: d => d.name, color: scale(c), fontSize: 10, position: 'end' },
+      data: own.map(d => ({ xAxis: d.i, name: `${d.a}→${d.b} wells` })),
+    };
+  }
+  // Strip series: one step line per curve, on the second grid, as a percentage
+  // of that curve's own peak count. In absolute wells a 57-well curve lies flat
+  // under a 2,000-well one and its drop is invisible; relative to its own peak
+  // every curve starts near 100 % and a loss of population shows whatever the
+  // group size. Absolute counts are in the tooltip and on the dashed markers.
+  for (const c of cats) {
+    const peak = Math.max(1, ...months.map(x => wellsOf(c, x)));
+    series.push({
+      name: c + ' · wells', type: 'line', step: 'end', showSymbol: false,
+      xAxisIndex: 1, yAxisIndex: 1, silent: true,
+      lineStyle: { width: 1.5, color: scale(c) }, itemStyle: { color: scale(c) },
+      data: months.map(x => { const w = wellsOf(c, x); return w ? +(w / peak * 100).toFixed(1) : null; }),
+    });
+  }
+
+  /* Two grids, so the count is a separate panel on its own axis rather than a
+     second y-axis on the rate plot (which would suggest a relationship between
+     wells and m³/d that is not there). containLabel is off and `left` fixed so
+     both panels' x positions line up month for month. The bottom margin leaves
+     room for the axis title — at 14 px it was clipped in half (Nov 2026). */
+  const base = baseOption();
+  const xBase = { type: 'category', data: months, axisLabel: { ...base.xAxis.axisLabel, interval: 5 } };
+  draw(root.querySelector('#pf-chart'), merge(base, {
+    legend: { show: false },
+    grid: [
+      { left: 64, right: 18, top: 30, bottom: 138, containLabel: false },
+      { left: 64, right: 18, height: 62, bottom: 44, containLabel: false },
+    ],
+    axisPointer: { link: [{ xAxisIndex: 'all' }] },
     tooltip: { trigger: 'axis',
       formatter: ps => {
-        const shown = ps.filter(p => !/P10/.test(p.seriesName));
-        return `Month ${shown[0]?.axisValue}<br>` + shown.map(p =>
-          `${esc(p.seriesName)}: ${compact(p.value, 1)} ${fluidUnit}`).join('<br>');
+        const shown = ps.filter(p => !/P10| · wells$/.test(p.seriesName));
+        const x = shown[0]?.axisValue ?? ps[0]?.axisValue;
+        return `Month ${x}<br>` + shown.map(p =>
+          `${esc(p.seriesName)}: ${compact(p.value, 1)} ${fluidUnit} `
+          + `<span style="opacity:.7">(${num(wellsOf(p.seriesName, +x))} wells)</span>`)
+          .join('<br>');
       } },
-    xAxis: { type: 'category', data: months,
-      name: 'months on production', nameLocation: 'middle', nameGap: 26,
-      nameTextStyle: { fontSize: 11 },
-      axisLabel: { interval: 5 } },
-    yAxis: { type: 'value', ...axisUnit(fluidUnit), axisLabel: { formatter: axisNum } },
+    xAxis: [
+      merge(base.xAxis, { ...xBase, gridIndex: 0, axisLabel: { show: false } }),
+      merge(base.xAxis, { ...xBase, gridIndex: 1,
+        name: 'months on production', nameLocation: 'middle', nameGap: 26,
+        nameTextStyle: { fontSize: 11, color: base.xAxis.axisLabel.color } }),
+    ],
+    yAxis: [
+      merge(base.yAxis, { type: 'value', gridIndex: 0, ...axisUnit(fluidUnit),
+        axisLabel: { ...base.yAxis.axisLabel, formatter: axisNum } }),
+      merge(base.yAxis, { type: 'value', gridIndex: 1, name: 'wells, % of peak', nameLocation: 'end',
+        nameGap: 8, nameTextStyle: { fontSize: 11, color: base.yAxis.axisLabel.color, align: 'left' },
+        min: 0, max: 100, interval: 50,
+        axisLabel: { ...base.yAxis.axisLabel, formatter: v => v + '%' } }),
+    ],
     series,
   }));
   root.querySelector('#pf-legend').innerHTML =
@@ -257,7 +336,7 @@ export function update(root, ctx) {
   }
   const colorOf = k => pal[Math.max(0, trajOrder.indexOf(k))] ?? pal[0];
   draw(root.querySelector('#pf-scatter'), merge(baseOption(), {
-    legend: { show: false }, grid: { bottom: 14 },
+    legend: { show: false }, grid: { bottom: 42 },   // room for the axis title
     tooltip: { trigger: 'item', formatter: p =>
       `<strong>${esc(valueAt(wells, 'sigla', p.data[2]) ?? '')}</strong><br>` +
       `${num(p.data[0], 0)} kg proppant per m<br>` +
