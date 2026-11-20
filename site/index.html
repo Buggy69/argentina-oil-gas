@@ -79,6 +79,10 @@
 <!-- One filter row, above everything it scopes. Never inside a chart card. -->
 <section id="filterbar" class="filterbar" hidden aria-label="Filters">
   <div class="filterbar-in">
+    <!-- Phones only (CSS): the bar collapses behind this button. -->
+    <button id="filters-toggle" class="filters-toggle btn-quiet" type="button"
+            aria-expanded="false" aria-controls="filters-body">Filters</button>
+    <div id="filters-body" class="filters-body">
     <div id="facets" class="facets"></div>
     <div class="filter-actions">
       <label class="units-toggle">
@@ -91,6 +95,7 @@
       </label>
       <span id="selection-summary" class="selection-summary"></span>
       <button id="reset-filters" class="btn-quiet" type="button">Reset</button>
+    </div>
     </div>
   </div>
 </section>

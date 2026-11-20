@@ -473,7 +473,19 @@ function syncFilterBar() {
   const n = activeFilterCount();
   document.getElementById('selection-summary').textContent =
     n === 0 ? 'No filters — showing everything' : `${n} filter${n > 1 ? 's' : ''} active`;
+  // The phone-only collapse button carries the count, so a collapsed bar
+  // still says the charts are filtered.
+  document.getElementById('filters-toggle').textContent =
+    n === 0 ? 'Filters — none' : `Filters — ${n} active`;
 }
+
+/** Phones: show/hide the filter bar behind its button (CSS hides the button
+    on wider screens, where the bar is always open). */
+document.getElementById('filters-toggle').addEventListener('click', (e) => {
+  const bar = document.getElementById('filterbar');
+  const open = bar.classList.toggle('expanded');
+  e.currentTarget.setAttribute('aria-expanded', String(open));
+});
 
 /* --- view routing -------------------------------------------------------- */
 

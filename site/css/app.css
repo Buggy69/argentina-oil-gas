@@ -162,7 +162,18 @@ a { color: var(--s1); }
       instead (the .facet stops being the positioning context) and spans its
       width. `top` stays auto, so it still opens right under its button.
       `!important` beats the Period panel's inline min-width. */
+/* 3. (2026-11-20) Twelve filter chips plus the toggles stood ~880 px tall on a
+      phone — more than a whole screen before the first chart. The bar now
+      collapses behind one "Filters" button that states how many are active,
+      so a filtered view is never mistaken for the full data. Collapsed by
+      default; desktop never sees the button. */
+.filters-toggle { display: none; }
 @media (max-width: 700px) {
+  .filters-toggle { display: inline-flex; align-items: center; min-height: 40px; }
+  .filters-toggle::after { content: '▾'; margin-left: 8px; }
+  .filterbar.expanded .filters-toggle::after { content: '▴'; }
+  .filterbar.expanded .filters-toggle { margin-bottom: 9px; }
+  .filterbar:not(.expanded) .filters-body { display: none; }
   .tabs { flex-wrap: wrap; overflow-x: visible; }
   .tabs button { padding: 9px 10px; }
   .filterbar-in { position: relative; }
