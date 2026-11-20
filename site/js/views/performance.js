@@ -83,6 +83,24 @@ export function render(root, ctx) {
         <div class="scroll-x" style="max-height:300px"><table class="data" id="pf-top"></table></div>
         <div id="pf-well" class="chart short" style="margin-top:12px"></div>
       </section>
+
+      <section class="card" id="pf-wor-card" hidden>
+        <h2>Water diagnostic — <span id="pf-wor-well"></span></h2>
+        <p class="note">Water–oil ratio (WOR = water ÷ oil, per month) and its time
+          derivative WOR′, against time since first production, both on log
+          scales — the water-control diagnostic plot of Chan (1995), SPE 30775.
+          The shape of the two curves over time is what is read: a WOR′ that keeps
+          rising with WOR is the pattern usually associated with channelling or a
+          near-wellbore problem; a WOR′ that flattens or falls is more often
+          associated with coning or normal displacement. Treat it as a screening
+          view: it needs the well's completion and reservoir context, and the
+          public data has only monthly volumes. Months without oil are left out
+          (WOR undefined); WOR′ is a central difference over ±2 months of a
+          3-month moving average, and only positive values can appear on a log
+          axis. Time is calendar days since the first month with production.</p>
+        <div id="pf-wor" class="chart"></div>
+        <div id="pf-wor-legend"></div>
+      </section>
     </div>`;
 
   root.querySelector('#pf-split').addEventListener('change', e => {
@@ -418,5 +436,62 @@ export function update(root, ctx) {
       series: [lineSeries('Oil',
         hist.map(h => convert.oil(perDay(h.oil, h.month))), s1)],
     }));
+    worDiagnostic(root, hist, tr.cells[0].textContent.trim() || String(id));
   };
+}
+
+/* --- WOR diagnostic (Chan-type) -------------------------------------------- */
+
+const MEAN_MONTH = 30.4375;   // calendar days per average month
+
+/**
+ * WOR and dWOR/dt against time for one well. Rows are calendar months; time
+ * is days since the first month with oil or gas, at mid-month. WOR is only
+ * defined where oil > 0. The derivative is taken on a 3-month centred moving
+ * average of WOR, as a central difference across ±2 months, because a raw
+ * monthly derivative of an allocated volume ratio is mostly noise.
+ */
+function worDiagnostic(root, hist, sigla) {
+  const card = root.querySelector('#pf-wor-card');
+  card.hidden = false;
+  root.querySelector('#pf-wor-well').textContent = sigla;
+  const first = hist.find(h => (h.oil > 0) || (h.gas > 0))?.month;
+  if (first == null) return;
+  const pts = hist
+    .filter(h => h.oil > 0 && Number.isFinite(h.water))
+    .map(h => ({ t: (h.month - first + 0.5) * MEAN_MONTH, wor: h.water / h.oil }));
+  const sm = pts.map((p, k) => {
+    const w = pts.slice(Math.max(0, k - 1), k + 2);
+    return { t: p.t, wor: w.reduce((a, q) => a + q.wor, 0) / w.length };
+  });
+  const der = [];
+  for (let k = 2; k < sm.length - 2; k++) {
+    const dt = sm[k + 2].t - sm[k - 2].t;
+    const d = (sm[k + 2].wor - sm[k - 2].wor) / dt;
+    if (dt > 0 && d > 0) der.push([sm[k].t, d]);
+  }
+  const pal = palette();
+  const worPts = pts.filter(p => p.wor > 0).map(p => [p.t, p.wor]);
+  draw(root.querySelector('#pf-wor'), merge(baseOption(), {
+    legend: { show: false }, grid: { bottom: 46, top: 30 },
+    tooltip: { trigger: 'item', formatter: p =>
+      `${esc(p.seriesName)}: ${compact(p.value[1], 3)}<br>day ${num(p.value[0])}` },
+    xAxis: { type: 'log', name: 'days since first production',
+      nameLocation: 'middle', nameGap: 28, nameTextStyle: { fontSize: 11 },
+      axisLabel: { formatter: axisNum } },
+    yAxis: { type: 'log', name: 'WOR (m³/m³) · WOR′ (1/day)',
+      nameTextStyle: { fontSize: 11, align: 'left' },
+      // axisNum rounds to 0 below 0.01; WOR′ lives there, so small ticks
+      // are written as powers of ten instead.
+      axisLabel: { formatter: v => (v >= 0.01 ? axisNum(v) : v.toExponential(0)) } },
+    series: [
+      { name: 'WOR', type: 'scatter', data: worPts, symbolSize: 8,
+        itemStyle: { color: pal[0], opacity: 0.8 } },
+      { name: 'WOR′', type: 'scatter', data: der, symbolSize: 8,
+        itemStyle: { color: pal[1], opacity: 0.8 } },
+    ],
+  }));
+  // Two series: a legend, and the names on it say which is which.
+  root.querySelector('#pf-wor-legend').innerHTML = legendHTML([{ label: `WOR (${num(worPts.length)} months)`, color: pal[0] },
+                              { label: `WOR′ (${num(der.length)} positive points)`, color: pal[1] }]);
 }
