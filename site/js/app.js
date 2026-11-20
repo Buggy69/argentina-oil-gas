@@ -61,9 +61,10 @@ const WELLS_DETAIL = {
   frac_water_m3: 'num',
 };
 
-/* Water columns (Nov 2026). Only the Map reads them, so they are decoded on
-   the first Map visit rather than with WELLS_DETAIL: five more columns would
-   add ~0.75 s to every first visit of Statistics/Performance/Compare too. */
+/* Water columns (Nov 2026). Only the Map and Statistics (water by formation)
+   read them, so they are decoded on the first visit of either rather than
+   with WELLS_DETAIL: five more columns would otherwise add ~0.75 s to every
+   first visit of Performance and Compare too. */
 const WELLS_WATER = {
   water_cut_pct: 'num', water_cut_last12_pct: 'num', water_last12_m3: 'num',
   cum_water_inj_m3: 'num', elevation_m: 'num',
@@ -562,7 +563,7 @@ async function renderView(force = false) {
       if (NEEDS_WELL_DETAIL.has(name)) await ctx.ensureWellDetail();
       if (name === 'performance') await ctx.ensureTypecurve();
       if (name === 'compare') await ctx.ensureHz();
-      if (name === 'map') await ctx.ensureWellWater();
+      if (name === 'map' || name === 'statistics') await ctx.ensureWellWater();
       if (NEEDS_CUBE_DETAIL.has(name)) await ctx.ensureCubeDetail();
     }
     current = { name, module: mod };
