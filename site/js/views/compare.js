@@ -37,7 +37,16 @@ const MIN_REF = 5;            // fewer wells than this is not a distribution
 const MIN_LATERAL_M = 500;    // the project's own horizontal threshold
 const MONTHS = 120;           // hz_monthly is capped at month 119
 const CHECKPOINTS = [6, 12, 24];
-const COL = { oil: 'oil_m3', gas: 'gas_e3m3', water: 'water_m3' };
+const COL = { oil: 'oil_m3', gas: 'gas_e3m3', water: 'water_m3', load: 'water_m3' };
+
+/* LOAD RECOVERY ("load")
+   Produced water as a percentage of the frac water pumped into the well:
+   the share of the treatment fluid returned. It is a ratio, so it is already
+   normalized and the per-lateral switch does not apply. The source does not
+   separate flowback from formation water, so everything produced counts; a
+   value above 100 % means the well has returned more water than was pumped,
+   i.e. formation water. Frac water is the sum over all reported jobs. */
+const isLoad = () => fluid === 'load';
 
 // Offset-frac search radius, wellhead to wellhead, in metres. 0 = off.
 // Default 1,000 m: in the case that prompted this (Loma Campana, Nov 2026)
@@ -90,6 +99,8 @@ function buildIndex(ctx) {
       operator: valueAt(wells, 'operator', i),
       formation: valueAt(wells, 'formation', i),
       lateral: Number.isFinite(lat) && lat > 0 ? lat : null,
+      fracWater: (() => { const v = wells.cols.frac_water_m3?.values[i];
+                          return Number.isFinite(v) && v > 0 ? v : null; })(),
       cumOil: wells.cols.cum_oil_m3.values[i] || 0,
     };
     m.key = fold(`${m.sigla} ${m.field ?? ''} ${m.operator ?? ''}`);
@@ -173,6 +184,7 @@ function meanRate(rate, a, b) {
 
 /** Divisor that turns a volume into "per 1,000 m (or ft) of lateral". */
 function lateralFactor(m) {
+  if (isLoad()) return m.fracWater == null ? null : 100 / m.fracWater;   // → % of frac water
   if (!perLateral) return 1;
   if (m.lateral == null || m.lateral < MIN_LATERAL_M) return null;
   return 1000 / convert.length(m.lateral);
@@ -186,7 +198,9 @@ function lateralFactor(m) {
 function curves(m) {
   const k = lateralFactor(m);
   if (k == null) return null;
-  const conv = convert[fluid];
+  // Load recovery is a percentage, so no unit conversion, and its rate is
+  // "% of the frac water returned that month" whatever the daily-rate toggle.
+  const conv = isLoad() ? (v => v) : convert[fluid];
   const { hz, span } = idx;
   const [a, b] = span.get(m.id);
   const v = hz.cols[COL[fluid]].values, mo = hz.cols.month_on_prod.values;
@@ -199,7 +213,7 @@ function curves(m) {
     if (Number.isFinite(vol[t])) {
       // perDay divides by THIS calendar month's days — exact, because unlike
       // a type curve we know which month each row is.
-      rate[t] = conv(perDay(vol[t], m.first + t)) * k;
+      rate[t] = (isLoad() ? vol[t] : conv(perDay(vol[t], m.first + t))) * k;
       c += vol[t];
     }
     cum[t] = conv(c) * k;
@@ -261,6 +275,7 @@ export function render(root, ctx) {
               <option value="oil">Oil</option>
               <option value="gas">Gas</option>
               <option value="water">Water</option>
+              <option value="load">Load recovery (water ÷ frac water)</option>
             </select></label>
           <span class="seg" role="group" aria-label="Normalization">
             <button id="cw-raw" type="button">As produced</button>
@@ -399,6 +414,9 @@ export function update(root, ctx) {
   root.querySelector('#cw-filter-note').hidden = activeFilterCount() === 0;
   root.querySelector('#cw-raw').setAttribute('aria-pressed', String(!perLateral));
   root.querySelector('#cw-lat').setAttribute('aria-pressed', String(perLateral));
+  // Load recovery is already a ratio: the lateral switch has nothing to do.
+  root.querySelector('#cw-raw').disabled = isLoad();
+  root.querySelector('#cw-lat').disabled = isLoad();
 
   // Wells from a shared link that are not horizontal (or unknown) are dropped
   // with a note rather than silently.
@@ -429,10 +447,12 @@ export function update(root, ctx) {
 
   /* --- reference sets ---------------------------------------------------- */
   const target = chosen[0];
-  const norm = perLateral ? ` per 1,000 ${units.length()}` : '';
+  const norm = perLateral && !isLoad() ? ` per 1,000 ${units.length()}` : '';
   const refs = [];
   const peers = [...idx.meta.values()].filter(m => m.id !== target.id);
-  const usable = m => !perLateral || (m.lateral != null && m.lateral >= MIN_LATERAL_M);
+  const usable = m => isLoad() ? m.fracWater != null
+    : !perLateral || (m.lateral != null && m.lateral >= MIN_LATERAL_M);
+  const whyExcluded = isLoad() ? 'no frac water reported' : 'no lateral ≥ 500 m reported';
   if (showVM) {
     const all = peers.filter(m => m.formation === 'VMUT');
     refs.push({ key: 'vm', name: 'Vaca Muerta horizontal', all,
@@ -448,7 +468,7 @@ export function update(root, ctx) {
   root.querySelector('#cw-ref-caption').textContent = refs.length
     ? 'Reference — ' + refs.map(r => `${r.name}: ${num(r.members.length)} wells` +
         (r.all.length > r.members.length
-          ? ` (${num(r.all.length - r.members.length)} excluded: no lateral ≥ 500 m reported)` : '')
+          ? ` (${num(r.all.length - r.members.length)} excluded: ${whyExcluded})` : '')
       ).join(' · ') + ` · target ${target.sigla} excluded from its own reference`
     : 'No reference curve selected.';
 
@@ -456,25 +476,36 @@ export function update(root, ctx) {
   const series = chosen.map((m, i) => ({ m, color: pal[i], c: curves(m) }));
   const unnormalizable = series.filter(s => !s.c).map(s => s.m.sigla);
 
-  const rateUnit = units[fluid + 'Series']() + norm;
-  const cumUnit = units[fluid]() + norm;
+  const rateUnit = isLoad() ? '% of frac water / month' : units[fluid + 'Series']() + norm;
+  const cumUnit = isLoad() ? '% of frac water' : units[fluid]() + norm;
   let lastT = 1;
   for (const s of series) if (s.c) lastT = Math.max(lastT, s.m.age);
   const xs = Array.from({ length: lastT }, (_, k) => k + 1);   // months 1..lastT
 
-  const warn = unnormalizable.length
-    ? ` <span style="color:var(--s4)">⚠ ${esc(unnormalizable.join(', '))}: no lateral
-        ≥ 500 m reported, so not shown per 1,000 ${units.length()}.</span>` : '';
+  const warn = !unnormalizable.length ? ''
+    : isLoad()
+      ? ` <span style="color:var(--s4)">⚠ ${esc(unnormalizable.join(', '))}: no frac
+          water reported, so no load recovery.</span>`
+      : ` <span style="color:var(--s4)">⚠ ${esc(unnormalizable.join(', '))}: no lateral
+          ≥ 500 m reported, so not shown per 1,000 ${units.length()}.</span>`;
+  const loadNote = isLoad()
+    ? ` <strong>Load recovery</strong> = produced water ÷ frac water pumped (all reported
+       jobs), in %. The data does not separate flowback from formation water, so all
+       produced water counts: above 100 % the well has returned more water than was
+       pumped. Low early recovery is commonly read as fluid retained in the formation;
+       treat that as a prompt, not a measurement.`
+    : '';
   root.querySelector('#cw-rate-note').innerHTML =
-    `${usingDailyRate()
+    `${isLoad() ? 'Water produced each month as a share of the frac water'
+      : usingDailyRate()
       ? 'Daily rate: each month’s volume ÷ that month’s calendar days'
       : 'Volume per month'}, in ${esc(rateUnit)}. Month 0 — the partial first
      month — is left out here and included in the cumulative. Reference bands are
      the exact P10–P90 (p10 = low) across the reference wells producing in that
      month, with the median dashed; a month with fewer than ${MIN_REF} wells is
-     not drawn.` + warn;
+     not drawn.` + loadNote + warn;
   root.querySelector('#cw-cum-note').innerHTML =
-    `Cumulative ${fluid} in ${esc(cumUnit)}, from month 0. Months a well did not
+    `Cumulative ${isLoad() ? 'load recovery' : fluid} in ${esc(cumUnit)}, from month 0. Months a well did not
      declare add nothing; a well is drawn only as far as the data reaches.` + warn;
 
   const bandSeries = (r, pick, x) => {

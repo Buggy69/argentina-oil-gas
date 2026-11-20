@@ -57,6 +57,8 @@ const WELLS_DETAIL = {
   cum_oil_m3: 'num', cum_gas_e3m3: 'num', cum_water_m3: 'num',
   lateral_m: 'num', stages: 'num', proppant_t: 'num',
   proppant_kg_per_m: 'num', stage_spacing_m: 'num', gor_m3_m3: 'num',
+  // Frac water pumped: the denominator of load recovery on Compare wells.
+  frac_water_m3: 'num',
 };
 
 /** Views that read anything from WELLS_DETAIL. */
