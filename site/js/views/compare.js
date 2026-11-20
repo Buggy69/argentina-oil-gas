@@ -30,6 +30,7 @@ import { draw, baseOption, merge, lineSeries, palette, axisUnit, legendHTML,
 import { quantileSorted } from '../stats.js?v=a9872ab70a';
 import { getSource, valueAt } from '../query.js?v=a9872ab70a';
 import { label as i18nLabel } from '../i18n.js?v=a9872ab70a';
+import { monthLabel } from '../store.js?v=a9872ab70a';
 
 const MAX_WELLS = 8;          // one per palette colour; more stops being readable
 const MIN_REF = 5;            // fewer wells than this is not a distribution
@@ -38,9 +39,16 @@ const MONTHS = 120;           // hz_monthly is capped at month 119
 const CHECKPOINTS = [6, 12, 24];
 const COL = { oil: 'oil_m3', gas: 'gas_e3m3', water: 'water_m3' };
 
+// Offset-frac search radius, wellhead to wellhead, in metres. 0 = off.
+// Default 1,000 m: in the case that prompted this (Loma Campana, Nov 2026)
+// the pads that preceded each jump sat 300–650 m away.
+const RADII = [0, 300, 500, 1000, 1500];
+const WINDOW = 3;             // months averaged before and after an episode
+
 let fluid = 'oil';
 let perLateral = false;
 let showVM = true, showField = true;
+let radius = 1000;
 
 /* --- index over the horizontal-well table ------------------------------- */
 
@@ -87,8 +95,78 @@ function buildIndex(ctx) {
     m.key = fold(`${m.sigla} ${m.field ?? ''} ${m.operator ?? ''}`);
     meta.set(id, m);
   }
-  idx = { hz, span, meta, lastMonth };
+  idx = { hz, span, meta, lastMonth, rowOf, jobs: fracJobs(ctx, wells, rowOf) };
   return idx;
+}
+
+/* --- fracture jobs near a well ------------------------------------------- */
+
+/** Every reported frac job with its well's wellhead position and name. */
+function fracJobs(ctx, wells, rowOf) {
+  const fj = ctx.fracJobs;
+  if (!fj) return [];
+  const out = [];
+  const lon = wells.cols.lon.values, lat = wells.cols.lat.values;
+  for (let r = 0; r < fj.n; r++) {
+    const id = fj.cols.idpozo.values[r];
+    const i = rowOf.get(id);
+    if (i === undefined || !Number.isFinite(lon[i]) || !Number.isFinite(lat[i])) continue;
+    out.push({ id, start: fj.cols.job_start.values[r], end: fj.cols.job_end.values[r],
+               stages: fj.cols.stages.values[r], lon: lon[i], lat: lat[i],
+               sigla: valueAt(wells, 'sigla', i) ?? String(id) });
+  }
+  return out;
+}
+
+/** Wellhead-to-wellhead distance in metres. Equirectangular: at well spacing
+    (≤ a few km) its error is far below the uncertainty of using the head
+    for a 3 km lateral in the first place. */
+function metres(lon1, lat1, lon2, lat2) {
+  const k = Math.PI / 180;
+  const dx = (lon2 - lon1) * Math.cos(lat1 * k) * 111320;
+  const dy = (lat2 - lat1) * 110574;
+  return Math.hypot(dx, dy);
+}
+
+/**
+ * Frac episodes that touched the target while it was producing: jobs on
+ * other wells within `radius` of its head (offset fracs), and its own jobs
+ * after first production (refracs). Jobs whose start months are adjacent are
+ * one episode — a pad is fractured over several weeks and often straddles a
+ * month end. A job sits at its START month; reported end dates are too often
+ * inconsistent (41 end before they start) to place anything by.
+ */
+function episodesFor(m) {
+  const i = idx.rowOf.get(m.id);
+  const wells = getSource('wells');
+  const lon = wells.cols.lon.values[i], lat = wells.cols.lat.values[i];
+  if (!Number.isFinite(lon) || !Number.isFinite(lat)) return null;
+  const last = m.first + m.age;
+  const hits = [];
+  for (const j of idx.jobs) {
+    if (j.start <= m.first || j.start > last) continue;   // only while producing
+    if (j.id === m.id) { hits.push({ ...j, own: true, d: 0 }); continue; }
+    if (!radius) continue;
+    const d = metres(lon, lat, j.lon, j.lat);
+    if (d <= radius) hits.push({ ...j, own: false, d });
+  }
+  hits.sort((a, b) => a.start - b.start);
+  const eps = [];
+  for (const h of hits) {
+    const e = eps[eps.length - 1];
+    if (e && h.start <= e.m1 + 1) { e.jobs.push(h); e.m1 = Math.max(e.m1, h.start); }
+    else eps.push({ m0: h.start, m1: h.start, jobs: [h] });
+  }
+  return eps;
+}
+
+/** Mean of the non-null values in rate[a..b], or null. */
+function meanRate(rate, a, b) {
+  let s = 0, n = 0;
+  for (let t = Math.max(1, a); t <= b; t++) {
+    if (rate[t] != null) { s += rate[t]; n++; }
+  }
+  return n ? s / n : null;
 }
 
 /* --- one well's curves --------------------------------------------------- */
@@ -190,6 +268,8 @@ export function render(root, ctx) {
           </span>
           <label><input type="checkbox" id="cw-ref-vm"> Vaca Muerta reference</label>
           <label><input type="checkbox" id="cw-ref-field"> Target's field reference</label>
+          <label>Offset fracs within
+            <select id="cw-radius"></select></label>
         </div>
         <div id="cw-results" class="cw-results"></div>
         <div id="cw-chips" class="cw-chips"></div>
@@ -207,6 +287,12 @@ export function render(root, ctx) {
         <h2>Cumulative production by month on production</h2>
         <p class="note" id="cw-cum-note"></p>
         <div id="cw-cum" class="chart"></div>
+      </section>
+
+      <section class="card" id="cw-frac-card">
+        <h2>Offset fracs and refracs — target well</h2>
+        <p class="note" id="cw-frac-note"></p>
+        <div class="scroll-x"><table class="data" id="cw-frac-table"></table></div>
       </section>
 
       <section class="card" id="cw-table-card">
@@ -264,6 +350,11 @@ export function render(root, ctx) {
   root.querySelector('#cw-lat').addEventListener('click', () => {
     perLateral = true; update(root, ctx);
   });
+  const rsel = root.querySelector('#cw-radius');
+  rsel.innerHTML = RADII.map(r => `<option value="${r}">${r
+    ? num(convert.length(r)) + ' ' + units.length() : 'off (refracs only)'}</option>`).join('');
+  rsel.value = String(radius);
+  rsel.addEventListener('change', (e) => { radius = Number(e.target.value); update(root, ctx); });
   root.querySelector('#cw-ref-vm').checked = showVM;
   root.querySelector('#cw-ref-field').checked = showField;
   root.querySelector('#cw-ref-vm').addEventListener('change', (e) => {
@@ -330,7 +421,7 @@ export function update(root, ctx) {
       ${dropped > 1 ? 'were' : 'was'} left out.</span>` : '');
 
   const empty = !chosen.length;
-  for (const id of ['#cw-rate-card', '#cw-cum-card', '#cw-table-card']) {
+  for (const id of ['#cw-rate-card', '#cw-cum-card', '#cw-frac-card', '#cw-table-card']) {
     root.querySelector(id).hidden = empty;
   }
   if (empty) { showResults(root, ''); return; }
@@ -402,6 +493,21 @@ export function update(root, ctx) {
     ];
   };
 
+  /* --- offset fracs / refracs on the target -------------------------------- */
+  const tgt = series[0];
+  const eps = episodesFor(target);
+  const fracMarks = [];
+  if (eps) {
+    for (const e of eps) {
+      const t0 = e.m0 - target.first;
+      if (t0 < 1 || t0 > lastT) continue;
+      const off = new Set(e.jobs.filter(j => !j.own).map(j => j.id)).size;
+      const own = e.jobs.some(j => j.own);
+      fracMarks.push({ xAxis: t0 - 1,
+        name: [off ? `${off} offset` : '', own ? 'refrac' : ''].filter(Boolean).join(' + ') });
+    }
+  }
+
   const chartFor = (el, pick, x, unit) => draw(root.querySelector(el), merge(baseOption(), {
     legend: { show: false }, grid: { bottom: 42, top: 30 },   // room for the axis title
     tooltip: { trigger: 'axis', formatter: ps => {
@@ -417,7 +523,14 @@ export function update(root, ctx) {
       ...refs.flatMap(r => bandSeries(r, pick, x)),
       ...series.filter(s => s.c).map(s =>
         lineSeries(s.m.sigla, x.map(t => s.c[pick][t]), s.color,
-          { lineStyle: { width: s === series[0] ? 3 : 2 } })),
+          { lineStyle: { width: s === series[0] ? 3 : 2 },
+            // Frac episodes are marked on the TARGET's rate only: one well's
+            // neighbourhood at a time keeps the chart readable.
+            ...(s === tgt && pick === 'rate' && fracMarks.length ? { markLine: {
+              symbol: 'none', silent: true,
+              lineStyle: { color: s.color, type: 'dashed', width: 1, opacity: 0.8 },
+              label: { formatter: d => d.name, color: s.color, fontSize: 10, position: 'end' },
+              data: fracMarks } } : {}) })),
     ],
   }));
   chartFor('#cw-rate', 'rate', xs, rateUnit);
@@ -428,6 +541,64 @@ export function update(root, ctx) {
                           color: s.color })),
     ...refs.map(r => ({ label: esc(r.name) + ' — median and P10–P90', color: r.color })),
   ]);
+
+  /* --- offset-frac table --------------------------------------------------- */
+  const rad = radius ? `${num(convert.length(radius))} ${units.length()}` : null;
+  root.querySelector('#cw-frac-note').innerHTML =
+    `Fracture jobs reported on other wells ${rad ? `whose wellhead lies within
+     <strong>${rad}</strong> of ${esc(target.sigla)}’s` : '(search off)'}, and
+     ${esc(target.sigla)}’s own jobs after its first production (refracs), while
+     it was producing — dashed on the rate chart. Jobs in adjacent months are one
+     episode. Rates are the target’s mean ${esc(rateUnit)} over the ${WINDOW}
+     months before the episode, then months 1–${WINDOW} and
+     ${WINDOW + 1}–${2 * WINDOW} after it, with the change against “before” —
+     split because a parent is often shut in or cleaning up right after a
+     neighbour’s frac, so any gain shows later. Normal decline is <em>not</em>
+     removed. <strong>Read with care:</strong> distance is
+     wellhead to wellhead — laterals of 2–3 km can run closer or farther apart
+     than their heads — the fracture table covers only reported jobs (mostly
+     2010 on), and the public data has no pressures, so a coincidence in time is a
+     prompt to look, not proof of a frac hit.`;
+  const ft = root.querySelector('#cw-frac-table');
+  if (!eps) {
+    ft.innerHTML = '<tbody><tr><td>No wellhead coordinates for the target, so no search.</td></tr></tbody>';
+  } else if (!eps.length) {
+    ft.innerHTML = `<tbody><tr><td>No ${rad ? 'offset fracs within ' + rad + ' or ' : ''}refracs
+      reported while ${esc(target.sigla)} was producing.</td></tr></tbody>`;
+  } else {
+    const rate = tgt.c?.rate;
+    ft.innerHTML = `
+      <thead><tr><th>Episode</th><th>Month on prod.</th><th>Wells fractured</th>
+        <th>Nearest (${units.length()})</th>
+        <th>Before, ${WINDOW} mo (${esc(rateUnit)})</th>
+        <th>After, mo 1–${WINDOW}</th><th>After, mo ${WINDOW + 1}–${2 * WINDOW}</th>
+        </tr></thead>
+      <tbody>${eps.map(e => {
+        const t0 = e.m0 - target.first, t1 = e.m1 - target.first;
+        const b = rate ? meanRate(rate, t0 - WINDOW, t0 - 1) : null;
+        // A window that runs past the end of the data is not shown at all —
+        // a partial window would compare unlike things.
+        const win = (a, z) => rate && z <= target.age ? meanRate(rate, a, z) : null;
+        const cellAfter = v => v == null ? '<td>—</td>'
+          : `<td>${compact(v, 2)}${b ? `<br><span class="note">${v >= b ? '+' : ''}${num((v / b - 1) * 100)} %</span>` : ''}</td>`;
+        const byWell = new Map();
+        for (const j of e.jobs) if (!byWell.has(j.id)) byWell.set(j.id, j);
+        const ws = [...byWell.values()].sort((x, y) => x.d - y.d);
+        const names = ws.map(j => j.own ? `<strong>${esc(j.sigla)} (refrac)</strong>`
+          : `${esc(j.sigla)} <span class="note">${num(convert.length(j.d))}</span>`);
+        const others = ws.filter(j => !j.own);
+        return `<tr>
+          <td>${monthLabel(e.m0)}${e.m1 > e.m0 ? ' – ' + monthLabel(e.m1) : ''}</td>
+          <td>${t0}${t1 > t0 ? '–' + t1 : ''}</td>
+          <td>${names.slice(0, 6).join('<br>')}${names.length > 6
+            ? `<br><span class="note">+ ${names.length - 6} more</span>` : ''}</td>
+          <td>${others.length ? num(convert.length(others[0].d)) : '—'}</td>
+          <td>${b != null ? compact(b, 2) : '—'}</td>
+          ${cellAfter(win(t1 + 1, t1 + WINDOW))}
+          ${cellAfter(win(t1 + WINDOW + 1, t1 + 2 * WINDOW))}
+        </tr>`;
+      }).join('')}</tbody>`;
+  }
 
   /* --- scorecard ---------------------------------------------------------- */
   const cell = (s, t) => {

@@ -145,10 +145,20 @@ ctx.ensureHz = async () => {
   if (!hzPromise) {
     hzPromise = (async () => {
       const { loadTable } = await import('./store.js?v=a9872ab70a');
-      ctx.hz = await loadTable('data/hz_monthly.parquet', {
-        idpozo: 'num', month_on_prod: 'num', fecha: 'date',
-        oil_m3: 'num', gas_e3m3: 'num', water_m3: 'num',
-      });
+      // The fracture jobs (~5k rows) ride along: Compare wells marks offset
+      // fracs and refracs from them. Fetched in parallel, so they add nothing
+      // to the wait for the 1.4 MB histories.
+      const [hz, fj] = await Promise.all([
+        loadTable('data/hz_monthly.parquet', {
+          idpozo: 'num', month_on_prod: 'num', fecha: 'date',
+          oil_m3: 'num', gas_e3m3: 'num', water_m3: 'num',
+        }),
+        loadTable('data/frac_jobs.parquet', {
+          idpozo: 'num', job_start: 'date', job_end: 'date', stages: 'num',
+        }),
+      ]);
+      ctx.hz = hz;
+      ctx.fracJobs = fj;
       return ctx.hz;
     })();
   }

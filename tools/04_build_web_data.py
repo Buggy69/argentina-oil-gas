@@ -489,6 +489,28 @@ def main() -> int:
     ).fetchone()[0]
     print(f"  hz_monthly rows: {hz_rows:,} across {hz_wells:,} horizontal wells")
 
+    # --------------------------------------------------------- frac jobs ----
+    # Every reported fracture job with its dates, ~5k rows and a few tens of
+    # KB. Compare wells searches it for jobs on wells near the target while
+    # the target was producing (offset fracs → possible frac hits), and for
+    # the target's own later jobs (refracs). Coordinates are NOT repeated:
+    # wells_slim carries lon/lat for every well, and the target may itself
+    # never have been fractured in the reported period.
+    print("building fracture jobs …")
+    fj_path = SITE / "frac_jobs.parquet"
+    con.execute(f"""
+        COPY (
+            SELECT idpozo, job_start, job_end, stages
+            FROM frac_job
+            ORDER BY job_start, idpozo
+        )
+        TO '{fj_path.as_posix()}'
+        (FORMAT parquet, COMPRESSION zstd)
+    """)
+    fj_rows = con.execute(
+        f"SELECT count(*) FROM read_parquet('{fj_path.as_posix()}')").fetchone()[0]
+    print(f"  frac_jobs rows: {fj_rows:,}")
+
     # ------------------------------------------------------------- dims ----
     # Every table has now registered its label tables, so the sidecar can be
     # written exactly once, here.
@@ -626,6 +648,8 @@ def main() -> int:
          f"{tc_rows:,} rows, operator/formation/block aware"),
         ("hz_monthly.parquet (tier B, lazy)", hz_path.stat().st_size,
          3 * 1_048_576, f"{hz_rows:,} rows, {hz_wells:,} horizontal wells"),
+        ("frac_jobs.parquet (tier B, lazy)", fj_path.stat().st_size,
+         256 * 1024, f"{fj_rows:,} jobs"),
         (f"wells/ (tier C, {tier_c_buckets} buckets)", tier_c_total,
          B["tier_c_max_total_mb"] * 1_048_576, ""),
         ("largest tier C bucket", tier_c_max, B["tier_c_max_file_mb"] * 1_048_576,
@@ -639,6 +663,7 @@ def main() -> int:
             or agg.stat().st_size > 8 * 1_048_576
             or wells_p.stat().st_size > 5 * 1_048_576
             or hz_path.stat().st_size > 3 * 1_048_576
+            or fj_path.stat().st_size > 256 * 1024
             or tier_c_total > B["tier_c_max_total_mb"] * 1_048_576
             or tier_c_max > B["tier_c_max_file_mb"] * 1_048_576
             or not agg_ok)
@@ -667,6 +692,8 @@ def main() -> int:
             "hz_monthly.parquet": {"bytes": hz_path.stat().st_size,
                                    "rows": hz_rows, "wells": hz_wells,
                                    "sha256": sha256(hz_path)},
+            "frac_jobs.parquet": {"bytes": fj_path.stat().st_size,
+                                  "rows": fj_rows, "sha256": sha256(fj_path)},
             "wells_buckets": tier_c,
         },
         "tier_c_layout": {

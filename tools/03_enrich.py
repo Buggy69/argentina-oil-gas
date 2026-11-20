@@ -71,6 +71,25 @@ def main() -> int:
         GROUP BY idpozo
     """)
 
+    # One row per fracture JOB, dates exactly as reported. well_frac above
+    # collapses a well's jobs into first/last, which is right for completion
+    # totals but erases WHEN each job happened — and "when were the neighbours
+    # fractured" is the whole point of the offset-frac markers on Compare wells
+    # (a user asked why two Loma Campana wells jumped in rate, Nov 2026; each
+    # jump followed a neighbouring pad's frac). 41 jobs report an end before
+    # their start and 88 span more than 90 days: shipped as reported, not
+    # cleaned — the view places a job at its START date and shows both.
+    print("building frac_job …")
+    con.execute(f"""
+        CREATE OR REPLACE TABLE frac_job AS
+        SELECT idpozo,
+               TRY_CAST(fecha_inicio_fractura AS DATE) AS job_start,
+               TRY_CAST(fecha_fin_fractura    AS DATE) AS job_end,
+               cantidad_fracturas                      AS stages
+        FROM read_csv_auto('{frac}')
+        WHERE TRY_CAST(fecha_inicio_fractura AS DATE) IS NOT NULL
+    """)
+
     # ------------------------------------------------------------------ 2 --
     # Per-well production history. `tef` is clamped before it is used for
     # anything rate-like: check 7 of the verification report found declarations
