@@ -236,6 +236,14 @@ page before being caught.
 
 ## Known gaps
 
+- **(2026-11-20)** `fetch_petrodb_hf.py` now compares cached files with HF's LFS
+  sha256 (tree API). Never exercised live: the first CI log must show
+  "petrodb change check: 0 of N cached files differ". If it says "change detection
+  skipped", the API shape assumption is wrong. Fix it there (not testable from SLB).
+- A local rebuild differs from CI's only by float summation order (last digit) and
+  by 2 wells whose `completion_type` (`mode()` tie) flips between builds. Commit
+  only the files a change needs; the weekly refresh regenerates the rest.
+
 - The weekly refresh (Friday 06:00 UTC) ran green Aug 14 → Oct 16, then failed
   three times on the portal block (lesson 21). The snapshot fallback was added
   2026-11-07; watch the next run to confirm it.

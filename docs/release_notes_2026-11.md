@@ -67,6 +67,49 @@ git worktree remove ../petrodb_before
 > still matter. We'd welcome the call to decide which further normalizations would
 > be most useful (per stage, per tonne of proppant, etc.).
 
+## Round 2 (15–20 Nov 2026)
+
+### Fixes from the second round of user feedback
+- **Overview applies every filter.** Before, Province, Block, Field, Formation and
+  Oil/gas well changed only the well count (10 of 12 filters were silently ignored).
+- **Type curves show how many wells are behind each month,** with a marker where
+  that number drops by 20 % or more, so a shrinking population is not read as
+  decline.
+- **Axis titles no longer cut off** on Well performance, Compare wells and two other
+  charts.
+
+### Compare wells
+- **Offset fracs and refracs.** Choose a radius (300 m to 1,500 m between
+  wellheads). Fracture jobs on nearby wells while the target was producing, and the
+  target's own refracs, appear as dashed markers on its rate curve. A table gives
+  the target's rate before, in months 1–3 after, and in months 4–6 after. The
+  well-known case: LLL-1558 and LLL-1577 jump in rate after neighbouring pads were
+  fractured 300–650 m away.
+- **Load recovery.** Produced water as a percentage of the frac water pumped,
+  monthly and cumulative, against the P10–P90 for Vaca Muerta and for the target's
+  field. The Vaca Muerta median is 25 % after 12 months. After its neighbours were
+  fractured, LLL-1558 climbs from ~20 % to ~95 %.
+
+### Water
+- **Map, coloured by water cut.** Last 12 months or lifetime, in four bands
+  (< 50 %, 50–90 %, 90–98 %, ≥ 98 %). Point size can show the water produced in the
+  last 12 months or the water injected. Water cut is water ÷ (oil + water).
+- **Water by producing formation** (Statistics). For each formation in the
+  selection: produced water, water cut and injected water. Each formation is placed
+  at the median total depth of its vertical wells (total depth minus elevation), a
+  proxy for stratigraphic position. The public data has no perforation depths or
+  formation tops, and the card says so.
+- **WOR diagnostic plot** (Well performance; click a well in "Best wells"). WOR and
+  its derivative against time, log-log, in the style of Chan's water-control plots.
+  A screening view.
+
+### Other
+- **Phones:** the filter bar folds behind a "Filters — n active" button.
+- **Shared links:** a link with an unknown parameter is now ignored, instead of
+  counting as an active filter.
+- **Behind the scenes:** the weekly refresh now spots when the source dataset
+  revises an existing file. Before, only brand-new files were picked up.
+
 ## Open / next
 - Production from the portal itself: 2026 data (the official series already
   reaches 2026-01; the site ends 2025-12).

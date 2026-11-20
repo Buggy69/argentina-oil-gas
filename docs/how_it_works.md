@@ -163,6 +163,22 @@ the Overview from the 40 KB summary means the page is complete and readable at
 behind an already-useful page. Making slow work faster is worth less than making
 it not block.
 
+### Cache-busting stamps (`tools/07_stamp_version.py`)
+GitHub Pages sends `Cache-Control: max-age=600` on every file, and that cannot be
+configured. After a deploy, a reload re-fetches the entry script but often serves the
+dynamically imported view modules from cache, so the page runs new and old code side
+by side. The stamp script appends `?v=<hash of all JS + CSS>` to every relative
+module import and stylesheet link. When any script changes, every URL changes, and
+no cache has seen the new ones. When nothing changed, nothing changes: the hash is
+content-derived and ignores existing stamps. Data files are not stamped. CI runs the
+script on its own checkout just before upload. After a deploy, `index.html` itself can stay stale for
+up to 10 minutes; one hard reload fixes that.
+
+### Columns decoded per view
+Parquet decoding costs ~150–220 ms per column, so `wells_slim` is decoded in groups:
+core columns at boot (the filter bar), detail columns on the first visit to a view
+that needs them, and the water columns only for Map and Statistics.
+
 ## 5. Why not DuckDB-WASM
 
 The plan originally called for DuckDB compiled to WebAssembly — a real SQL engine

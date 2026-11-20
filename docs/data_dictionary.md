@@ -107,6 +107,24 @@ unconventional wells, ~1% of conventional).
 | `well_fluid_asof` **[derived]** | `tipopozo` in force that month, by ASOF join (events record only transitions) |
 | `operator_latest` **[derived]** | most recent operator — a different question, and a different answer |
 | `tef` (in `prod_monthly`) **[derived]** | clamped to the hours available in the month; five source rows exceed it, worst case 3,058 h |
+| `elevation_m` | `cota` from the well registry, m above sea level. Used with `depth_m` (total depth) as `depth_m − elevation_m` ≈ subsea depth of a VERTICAL well's bottom; meaningless for directional/horizontal wells, whose `depth_m` is measured depth |
+| `cum_water_inj_m3` **[derived]** | lifetime `sum(iny_agua)`; the data does not say whether it is waterflood or disposal |
+| `water_cut_pct` **[derived]** | lifetime, liquid basis: `100 × cum_water / (cum_oil + cum_water)`; gas is not in the denominator |
+| `water_last12_m3`, `water_cut_last12_pct` **[derived]** | same, over the 12 months ending at the last month in the data (one window for every well), so a well shut in before then is NULL, not its old value |
+
+## Water: what is and is not in the public data (Nov 2026)
+- **Is:** produced and injected water per well-month; frac water pumped per job
+  (Adjunto IV); wellhead position; producing formation; total depth; elevation.
+- **Is not:** perforation intervals, formation tops, landing TVD, or any depth of
+  water entry; flowback vs formation water; hole size; drilling events. The map shows
+  water laterally at the wellhead; the Statistics "Water by producing formation" card
+  gives the formation and a total-depth proxy from measured-vertical wells only.
+
+## Fracture jobs (`frac_job`, `site/data/frac_jobs.parquet`)
+One row per reported job: `idpozo`, `job_start`, `job_end`, `stages`, dates exactly
+as reported. 41 jobs end before they start and 88 span more than 90 days, so the
+Compare-wells offset-frac search places a job at its **start** month. 1 job is dated
+after the build date (2026-12-05). Shipped as reported, not cleaned.
 
 ## Language
 

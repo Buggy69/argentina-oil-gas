@@ -44,6 +44,34 @@ For YPF.Nq.LACh-89(h) (La Amarga Chica), per 1,000 m, field reference:
 These were computed independently in SQL over the same parquet, and the page matched
 every value, including the 8 field wells excluded for no lateral.
 
+## Offset fracs and refracs (added 2026-11-20)
+A user asked why LLL-1558 and LLL-1577 (Loma Campana, YPF) jump in rate. Each jump
+follows a neighbouring pad's frac. The tab now searches `frac_jobs.parquet` for jobs
+on other wells whose **wellhead** lies within a chosen radius (off / 300 / 500 /
+1,000 / 1,500 m, default 1,000 m) and that started while the target was producing,
+plus the target's own later jobs (refracs). Jobs in adjacent months form one episode.
+Each episode is a dashed marker on the target's rate curve. The card lists the wells,
+the nearest distance, and the target's mean rate over the 3 months before and over
+months 1–3 and 4–6 after. "After" is split because a parent is often shut in or
+cleaning up right after a neighbour's frac, so a gain shows up later.
+
+Verified on the page against a manual SQL search: LLL-1558 has 3 episodes (6, 5 and 5
+wells; Aug 2021, Apr 2022, Nov 2022; 504–660 m). LLL-1577 has 1 episode (LLL-1679 to
+1683, Feb 2023, 300–333 m). Limits: the distance is between wellheads, not laterals;
+only reported jobs are included (mostly 2010 onward); there are no pressures, so a
+match in time is a prompt to look, not proof of a frac hit.
+
+## Load recovery (added 2026-11-20)
+A "Load recovery" fluid option shows produced water as a percentage of the frac water
+pumped (summed over all reported jobs), monthly and cumulative. It has exact P10–P90
+references, like the other fluids. Wells without frac water are excluded and counted.
+The per-lateral switch is disabled, because a ratio is already normalized. Flowback
+and formation water are not separated, so above 100 % the well has produced formation
+water. The page matched DuckDB: LLL-1558 is at 15 / 18 / 20 % at 6 / 12 / 24 months;
+the VM median is 25 % at 12 months, over 1,885 wells. After the 2021–22 offset fracs,
+LLL-1558's cumulative load recovery climbs from ~20 % to ~95 %, consistent with the
+neighbours' frac water being produced through it.
+
 ## Limits
 Lateral normalization removes only the first-order effect of well length. Across
 1,895 VMUT horizontal wells with at least 12 months, cumulative oil vs lateral length
