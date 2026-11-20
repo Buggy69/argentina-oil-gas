@@ -61,6 +61,15 @@ const WELLS_DETAIL = {
   frac_water_m3: 'num',
 };
 
+/* Water columns (Nov 2026). Only the Map reads them, so they are decoded on
+   the first Map visit rather than with WELLS_DETAIL: five more columns would
+   add ~0.75 s to every first visit of Statistics/Performance/Compare too. */
+const WELLS_WATER = {
+  water_cut_pct: 'num', water_cut_last12_pct: 'num', water_last12_m3: 'num',
+  cum_water_inj_m3: 'num', elevation_m: 'num',
+};
+let wellWaterPromise = null;
+
 /** Views that read anything from WELLS_DETAIL. */
 const NEEDS_WELL_DETAIL = new Set(['map', 'statistics', 'performance', 'compare']);
 /** Views that break the cube down by a dimension outside CUBE_CORE. */
@@ -80,6 +89,19 @@ ctx.ensureWellDetail = async () => {
     wellDetailPromise = extendTable(ctx.wells, 'data/wells_slim.parquet', WELLS_DETAIL);
   }
   return wellDetailPromise;
+};
+
+/** The water columns, after the detail ones (two extendTable calls on the
+    same table are kept sequential rather than racing each other). */
+ctx.ensureWellWater = async () => {
+  if (!wellWaterPromise) {
+    wellWaterPromise = (async () => {
+      await ctx.ensureWellDetail();
+      const { extendTable } = await import('./store.js?v=a9872ab70a');
+      await extendTable(ctx.wells, 'data/wells_slim.parquet', WELLS_WATER);
+    })();
+  }
+  return wellWaterPromise;
 };
 
 /* The block cube — every concession and field, no top-N cut. Loaded only when a
@@ -540,6 +562,7 @@ async function renderView(force = false) {
       if (NEEDS_WELL_DETAIL.has(name)) await ctx.ensureWellDetail();
       if (name === 'performance') await ctx.ensureTypecurve();
       if (name === 'compare') await ctx.ensureHz();
+      if (name === 'map') await ctx.ensureWellWater();
       if (NEEDS_CUBE_DETAIL.has(name)) await ctx.ensureCubeDetail();
     }
     current = { name, module: mod };

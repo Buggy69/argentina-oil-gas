@@ -49,7 +49,23 @@ const COLOR_BY = [
   ['tipo_recurso', 'Resource type', 3],
   ['well_fluid', 'Well fluid type', 3],
   ['cuenca', 'Basin (highlight one)', 99],
+  // Water cut in four ORDERED bins on a one-hue ramp (light = little water,
+  // dark = mostly water; reversed steps in dark mode). Ordered classes are not
+  // identities, so the three-hue limit above does not apply: a single-hue ramp
+  // stays readable for colourblind viewers because it varies in lightness
+  // only. Ramp validated with the dataviz ordinal check, light and dark.
+  ['water_cut_last12_pct', 'Water cut, last 12 months (%)', 3, 'bins'],
+  ['water_cut_pct', 'Water cut, lifetime (%)', 3, 'bins'],
 ];
+
+/* Bin edges chosen from the data: across the 26,923 wells with liquids in
+   the last 12 months they split it roughly 6.1k / 7.7k / 8.3k / 4.8k, so each
+   colour carries a comparable share instead of one class swallowing the map.
+   Water cut is liquid-basis — water / (oil + water). */
+const WC_BINS = [[50, '< 50 %'], [90, '50–90 %'], [98, '90–98 %'], [Infinity, '≥ 98 %']];
+const binOf = v => WC_BINS.findIndex(([hi]) => v < hi);
+const NO_WC = { water_cut_last12_pct: 'No liquids in the last 12 months',
+                water_cut_pct: 'No liquids produced' };
 
 let colorBy = 'trajectory_class';
 let highlight = null;
@@ -76,6 +92,8 @@ export async function render(root, ctx) {
               <option value="cum_oil_m3">Cumulative oil</option>
               <option value="cum_gas_e3m3">Cumulative gas</option>
               <option value="cum_water_m3">Cumulative water</option>
+              <option value="water_last12_m3">Water, last 12 months</option>
+              <option value="cum_water_inj_m3">Cumulative water injected</option>
               <option value="lateral_m">Lateral length</option>
               <option value="none">Uniform</option>
             </select>
@@ -133,6 +151,7 @@ export function update(root, ctx) {
 
   const meta = COLOR_BY.find(c => c[0] === colorBy);
   const emphasisMode = meta[2] > 3;
+  const binMode = meta[3] === 'bins';
   const gcol = wells.cols[colorBy];
 
   // In emphasis mode one category is picked out and everything else greys back.
@@ -168,7 +187,10 @@ export function update(root, ctx) {
       outside++; continue;
     }
     let key;
-    if (emphasisMode) {
+    if (binMode) {
+      const v = gcol.values[i];
+      key = Number.isFinite(v) ? WC_BINS[binOf(v)][1] : NO_WC[colorBy];
+    } else if (emphasisMode) {
       const v = gcol.codes[i] >= 0 ? gcol.dict[gcol.codes[i]] : null;
       key = v === highlight ? highlight : 'Other';
     } else {
@@ -195,12 +217,20 @@ export function update(root, ctx) {
      Keeping the coloured set at three also holds the map inside the
      three-slot limit an all-pairs scatter needs to stay colourblind-safe. */
   const NEUTRAL = new Set(['Other', '(sin dato)', 'Unknown', 'Not indicated',
-                           'No informado']);
+                           'No informado', ...Object.values(NO_WC)]);
 
-  const order = [...classes.keys()].filter(k => !NEUTRAL.has(k)).sort();
+  // Bins keep their numeric order (low → high water cut), not alphabetical.
+  const order = binMode
+    ? WC_BINS.map(b => b[1]).filter(k => classes.has(k))
+    : [...classes.keys()].filter(k => !NEUTRAL.has(k)).sort();
   const pal = palette();
   const colorOf = (k) => {
     if (NEUTRAL.has(k)) return OTHER_GREY();
+    if (binMode) {
+      const b = WC_BINS.findIndex(x => x[1] === k);
+      return getComputedStyle(document.documentElement)
+        .getPropertyValue(`--ord-${b + 1}`).trim();
+    }
     const i = order.indexOf(k);
     return (i >= 0 && i < 3) ? pal[i] : OTHER_GREY();
   };
@@ -286,7 +316,14 @@ export function update(root, ctx) {
      Marker area is proportional to ${sizeBy === 'none' ? 'nothing (uniform)' :
      esc(({ cum_oil_m3: 'cumulative oil', cum_gas_e3m3: 'cumulative gas',
             cum_water_m3: 'cumulative water',
+            water_last12_m3: 'water produced in the last 12 months of the data',
+            cum_water_inj_m3: 'cumulative water injected (waterflood or disposal — the data does not say which)',
             lateral_m: 'lateral length' })[sizeBy])}.
+     ${binMode ? `Water cut is on a liquid basis, water ÷ (oil + water); gas is not in it,
+       so for a gas well it describes its liquids only. “Last 12 months” is the last
+       12 months in the data, the same window for every well. Location is the
+       wellhead; the data has no perforation depth, so this map cannot say at which
+       depth the water is produced.` : ''}
      ${emphasisMode ? 'Basin has more than three categories, so this view highlights one against grey rather than assigning colours that would not stay distinguishable for colourblind readers on a scatter.' : ''}`;
 
   draw(root.querySelector('#mp-chart'), merge(baseOption(), {
@@ -303,7 +340,12 @@ export function update(root, ctx) {
           `${esc(valueAt(wells, 'operator', i) ?? '')}<br>` +
           `${esc(valueAt(wells, 'trajectory', i) ?? '')}` +
           (valueAt(wells, 'lateral_m', i) ? ` · ${num(valueAt(wells, 'lateral_m', i))} m lateral` : '') +
-          `<br>Cum oil ${compact(convert.oil(oil), 2)} ${units.oil()}`;
+          `<br>Cum oil ${compact(convert.oil(oil), 2)} ${units.oil()}` +
+          `<br>Cum water ${compact(convert.water(valueAt(wells, 'cum_water_m3', i)), 2)} ${units.water()}` +
+          (Number.isFinite(wells.cols.water_cut_last12_pct?.values[i])
+            ? ` · water cut (last 12 mo) ${num(wells.cols.water_cut_last12_pct.values[i], 1)} %` : '') +
+          (wells.cols.cum_water_inj_m3?.values[i] > 0
+            ? `<br>Water injected ${compact(convert.water(wells.cols.cum_water_inj_m3.values[i]), 2)} ${units.water()}` : '');
       },
     },
     // No xAxis/yAxis: the geo component supplies the coordinate system, and
@@ -332,7 +374,8 @@ export function update(root, ctx) {
       </button>`;
     }).join('') + `</div>
     <p class="source" style="margin-top:6px">Click a class to show or hide it.
-      Unknown wells are drawn underneath the classified ones, but there are
-      ${num(classes.get('Unknown')?.length ?? 0)} of them — switching them off is
-      the quickest way to read the rest.</p>`;
+      ${neutralKeys.length ? `Grey wells (${esc(neutralKeys.map(k => i18nLabel(colorBy, k)).join(', '))})
+      are drawn underneath the coloured ones, but there are
+      ${num(neutralKeys.reduce((a, k) => a + (classes.get(k)?.length ?? 0), 0))} of them —
+      switching them off is the quickest way to read the rest.` : ''}</p>`;
 }

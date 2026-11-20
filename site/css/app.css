@@ -29,6 +29,9 @@
 
   --seq-100:#cde2fb; --seq-250:#86b6ef; --seq-400:#3987e5;
   --seq-550:#1c5cab; --seq-700:#0d366b;
+  /* Ordinal ramp for binned magnitudes (map water cut): low → high. Validated
+     with the dataviz ordinal check; light end clears the surface at 2.06:1. */
+  --ord-1:#86b6ef; --ord-2:#3987e5; --ord-3:#1c5cab; --ord-4:#0d366b;
 
   /* Map land: one step away from the card surface in each theme, so the
      country reads as a filled shape rather than as a hole cut in the card. */
@@ -50,6 +53,8 @@
     --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500;
     --s5:#d55181; --s6:#008300; --s7:#9085e9; --s8:#e66767;
     --map-land: #24241f;
+    /* Dark: reversed steps, so more water still means more contrast. */
+    --ord-1:#184f95; --ord-2:#2a78d6; --ord-3:#6da7ec; --ord-4:#b7d3f6;
   }
 }
 :root[data-theme="dark"] {
@@ -62,6 +67,7 @@
   --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500;
   --s5:#d55181; --s6:#008300; --s7:#9085e9; --s8:#e66767;
   --map-land: #24241f;
+  --ord-1:#184f95; --ord-2:#2a78d6; --ord-3:#6da7ec; --ord-4:#b7d3f6;
 }
 
 * { box-sizing: border-box; }

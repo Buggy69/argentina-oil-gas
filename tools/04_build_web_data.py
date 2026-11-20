@@ -294,10 +294,30 @@ def main() -> int:
                    first_prod_declared, first_prod_month, last_prod_month,
                    producing_months,
                    cum_oil_m3, cum_gas_e3m3, cum_water_m3,
-                   lateral_m, stages, proppant_t, water_m3 AS frac_water_m3,
+                   lateral_m, stages, proppant_t, well_attrs.water_m3 AS frac_water_m3,
                    max_pressure_psi,
-                   proppant_kg_per_m, water_m3_per_m, stage_spacing_m, gor_m3_m3
-            FROM well_attrs ORDER BY cuenca, idpozo
+                   proppant_kg_per_m, water_m3_per_m, stage_spacing_m, gor_m3_m3,
+                   -- Water, Nov 2026 (asked for by SLB colleagues). Water cut is
+                   -- on a LIQUID basis, water / (oil + water): gas is not in the
+                   -- denominator, so for a gas well it describes its liquids only.
+                   -- "Last 12 months" = the 12 months ending at the last month
+                   -- in the data, the same for every well — so a well that has
+                   -- stopped producing shows NULL, not its old water cut.
+                   cota AS elevation_m,
+                   cum_water_inj_m3,
+                   round(100 * cum_water_m3 / nullif(cum_oil_m3 + cum_water_m3, 0), 2)
+                       AS water_cut_pct,
+                   l12.w_m3 AS water_last12_m3,
+                   round(100 * l12.w_m3 / nullif(l12.o_m3 + l12.w_m3, 0), 2)
+                       AS water_cut_last12_pct
+            FROM well_attrs
+            LEFT JOIN (
+                SELECT idpozo, sum(prod_agua) AS w_m3, sum(prod_pet) AS o_m3
+                FROM prod_monthly
+                WHERE fecha > (SELECT max(fecha) FROM prod_monthly) - INTERVAL 12 MONTH
+                GROUP BY idpozo
+            ) l12 USING (idpozo)
+            ORDER BY cuenca, idpozo
         ) TO '{(SITE / 'wells_slim.parquet').as_posix()}'
         (FORMAT parquet, COMPRESSION zstd)
     """)
