@@ -21,6 +21,7 @@ Run:  python tools/fetch_petrodb_hf.py        (skips files already present)
 
 from __future__ import annotations
 
+import hashlib
 import json
 import sys
 import time
@@ -63,9 +64,65 @@ def get(url: str) -> bytes:
     raise AssertionError("unreachable")
 
 
+def remote_hashes() -> dict[str, str] | None:
+    """sha256 of every file under argentina/ as HuggingFace reports it, or None.
+
+    WHY (2026-11-20): the workflow restores data/raw/petrodb from a cache with a
+    static key, and main() skips files already present. A NEW year partition
+    would still be fetched (it appears in _files.json), but a REVISED existing
+    file — wells.parquet, or a corrected 2025 partition — would never replace
+    the cached copy, leaving a silently half-updated dataset. HF's tree API
+    lists each file with its LFS sha256, so a changed file can be detected
+    without downloading it.
+
+    Never fatal: if the listing fails or has an unexpected shape, the refresh
+    carries on exactly as before and says so. (Not testable from the SLB
+    network, which blocks huggingface.co — see CLAUDE.md lesson 19.)
+    """
+    # base_url = https://huggingface.co/datasets/<org>/<repo>/resolve/<rev>/<dir>/
+    try:
+        tail = BASE.split("/datasets/", 1)[1]
+        org, repo, _, rev, *sub = tail.strip("/").split("/")
+        api = (f"https://huggingface.co/api/datasets/{org}/{repo}/tree/{rev}/"
+               f"{'/'.join(sub)}?recursive=true")
+        entries = json.loads(get(api))
+        prefix = "/".join(sub) + "/"
+        out = {}
+        for e in entries:
+            if e.get("type") != "file" or "lfs" not in e:
+                continue
+            out[e["path"][len(prefix):] if e["path"].startswith(prefix) else e["path"]] =                 e["lfs"]["oid"]
+        return out or None
+    except Exception as exc:  # noqa: BLE001 - advisory check, must not break the refresh
+        print(f"  (change detection skipped: {type(exc).__name__}: {exc})", flush=True)
+        return None
+
+
+def sha256_file(p: Path) -> str:
+    h = hashlib.sha256()
+    with p.open("rb") as f:
+        for chunk in iter(lambda: f.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
 def main() -> int:
     partitions = json.loads(get(BASE + "monthly_production/_files.json"))
     rels = TOP_LEVEL + ["monthly_production/" + p for p in partitions]
+
+    # A cached file whose sha256 differs from HF's is stale: delete it so the
+    # loop below fetches it again.
+    remote = remote_hashes()
+    changed = []
+    if remote is not None:
+        for rel in rels:
+            dest = ROOT / rel
+            want = remote.get(rel)
+            if want and dest.exists() and sha256_file(dest) != want:
+                changed.append(rel)
+                dest.unlink()
+        print(f"petrodb change check: {len(changed)} of {len(rels)} cached files "
+              f"differ from HuggingFace" + (": " + ", ".join(changed) if changed else ""))
 
     fetched = 0
     for rel in rels:
@@ -76,6 +133,8 @@ def main() -> int:
         # A proxy or error page would not start with Parquet's magic bytes.
         if body[:4] != b"PAR1" or body[-4:] != b"PAR1":
             raise RuntimeError(f"{rel}: response is not a Parquet file")
+        if remote and remote.get(rel) and hashlib.sha256(body).hexdigest() != remote[rel]:
+            raise RuntimeError(f"{rel}: downloaded bytes do not match HF's sha256")
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_bytes(body)
         fetched += 1
@@ -84,6 +143,12 @@ def main() -> int:
 
     print(f"petrodb: {len(rels)} files in {ROOT} ({fetched} downloaded, "
           f"{len(rels) - fetched} already present)")
+    if changed:
+        # The cache key is static, so actions/cache will NOT save these new
+        # bytes: every later run re-downloads them (correct, just slower).
+        # Bump the key suffix in refresh.yml to make the new data the cache.
+        print("::warning::petrodb changed upstream - bump the cache key "
+              "(petrodb-hf-vN) in .github/workflows/refresh.yml")
     return 0
 
 
