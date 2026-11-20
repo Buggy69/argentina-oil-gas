@@ -198,6 +198,15 @@ page before being caught.
   the fracture table: the finest geological granularity anywhere is
   `formacion_productiva = "vaca muerta"`, a single value. No member/`nivel`/
   `unidad` column exists. `profundidad` is total depth, not a landing TVD.
+  **Possible exception, not yet inspected (2026-11-20):** the portal dataset
+  "Trayectorias de Pozo Vaca Muerta" (`trayectoria-de-pozos`, id f5c0b5a5…,
+  CSV + SHP, CSV updated 2026-11-15) is described as trajectories "con niveles
+  de navegación" — landing levels. Found via the datos.gob.ar mirror API; the
+  file itself is on datos.energia.gob.ar, unreachable from this machine on
+  2026-11-19/20. Could also give inclination (toe-up/down), asked for by a user.
+- **Offset fracs** (Compare wells, 2026-11-20): `frac_job` (03) →
+  `site/data/frac_jobs.parquet`, one row per reported job, dates as reported
+  (41 end before start; placed at start). Distance is wellhead to wellhead.
 - **Water is the largest stream**: 6.9 billion m³ produced across 47,848 wells
   (91% water cut), plus 7.1 billion m³ injected — more volume than the oil.
 - Formation codes map 1:1 to names (77 of them), so `VMUT` displays as
