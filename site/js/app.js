@@ -247,6 +247,24 @@ function initTheme() {
 }
 
 /* --- filter bar ---------------------------------------------------------- */
+
+/**
+ * A link can carry a key that is not a filter at all — a typo, or an old link
+ * from a renamed dimension (seen in testing with `op=`). readHash() used to
+ * take it as a filter, so the page said "1 filter active" and every chart
+ * carried a "not applied" warning for a filter nobody could see or reset in
+ * the bar. Keys that are not a filter-bar dimension are dropped, and logged.
+ */
+function dropUnknownFilters() {
+  const known = new Set(FACETS.map(f => f[0]));
+  for (const k of Object.keys(state.filters)) {
+    if (!known.has(k)) {
+      console.info(`[url] ignored "${k}": not a filter of this page`);
+      delete state.filters[k];
+    }
+  }
+}
+
 function buildFilterBar() {
   const host = document.getElementById('facets');
   host.innerHTML = '';
@@ -717,10 +735,12 @@ async function boot() {
 
   performance.mark('tables-decoded');
 
+  dropUnknownFilters();
   buildFilterBar();
   onChange(() => { syncFilterBar(); renderView(); });
   window.addEventListener('hashchange', () => {
     readHash();
+    dropUnknownFilters();
     // A pasted link can change the unit or time basis too; the formatter
     // flags and checkboxes have to follow the state it brings.
     setOilfieldUnits(state.oilfield);

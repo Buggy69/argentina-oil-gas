@@ -10,9 +10,19 @@ GitHub Actions runner where the drive letter does not exist.
 
 from __future__ import annotations
 
+import sys
 import tomllib  # standard library since Python 3.11 — no dependency needed
 from pathlib import Path
 from typing import Any
+
+# The build prints Δ, →, ³ and accented Spanish names. A Windows console's
+# default codepage (cp1252) cannot encode Δ, so 04_build_web_data.py crashed
+# at its final self-check print when run locally (CI's Linux runner is UTF-8
+# and never saw it). Every script imports this module, so switching the
+# streams to UTF-8 here fixes all of them at once.
+for _stream in (sys.stdout, sys.stderr):
+    if hasattr(_stream, "reconfigure"):
+        _stream.reconfigure(encoding="utf-8", errors="replace")
 
 # __file__ is  <root>/tools/config.py , so two .parent hops reach the repo root.
 # .resolve() turns it absolute and collapses any ".." segments.
